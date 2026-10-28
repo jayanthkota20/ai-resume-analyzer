@@ -1,0 +1,26 @@
+# Secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Python environment and cache
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Private documents and local data
+uploads/
+resumes/
+*.pdf
+*.docx
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor and system files
+.vscode/
+Thumbs.db
+.DS_Store
