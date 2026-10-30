@@ -1,5 +1,7 @@
+import base64
 import hashlib
 import hmac
+import re
 import secrets
 import string
 import time
@@ -23,8 +25,31 @@ def _clear_session():
         del st.session_state[key]
 
 
+def _render_auth_markup(markup):
+    """Render decorative SVG illustrations as embedded images."""
+    def svg_to_image(match):
+        svg = match.group(0)
+        encoded = base64.b64encode(
+            svg.encode("utf-8")
+        ).decode("ascii")
+
+        return (
+            '<img class="skyline" alt="" aria-hidden="true" '
+            f'src="data:image/svg+xml;base64,{encoded}">'
+        )
+
+    markup = re.sub(
+        r"<svg\b.*?</svg>",
+        svg_to_image,
+        markup,
+        flags=re.DOTALL,
+    )
+
+    st.markdown(markup, unsafe_allow_html=True)
+
+
 def _show_background():
-    st.markdown(
+    _render_auth_markup(
         """
 <style>
 .stApp {
@@ -56,13 +81,16 @@ def _show_background():
 
 .auth-backdrop .skyline {
     position: absolute;
-    bottom: 3%;
+    bottom: 2%;
     left: 0;
+    display: block;
     width: 100%;
-    height: 38vh;
+    height: 36vh;
     min-height: 200px;
-    color: #719b8d;
-    opacity: 0.38;
+    object-fit: contain;
+    object-position: center bottom;
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 .resume-paper {
@@ -115,14 +143,14 @@ def _show_background():
 }
 
 .paper-three {
-    top: 52%;
+    top: 48%;
     left: 15%;
     --tilt: 9deg;
     animation-delay: -5s;
 }
 
 .paper-four {
-    top: 57%;
+    top: 50%;
     right: 13%;
     --tilt: -11deg;
     animation-delay: -2s;
@@ -361,6 +389,10 @@ def _show_background():
     .resume-paper {
         opacity: 0.45;
     }
+
+    .auth-backdrop .skyline {
+        opacity: 0.35;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -379,7 +411,7 @@ def _show_background():
 
 <svg class="skyline" viewBox="0 0 1400 250"
      xmlns="http://www.w3.org/2000/svg">
-<g fill="currentColor" stroke="currentColor"
+<g fill="#527d6d" stroke="#527d6d"
    stroke-width="3" stroke-linejoin="round">
 
 <g transform="translate(15,15)">
@@ -446,8 +478,7 @@ fill="#edf4f1"/>
 </g>
 </svg>
 </div>
-""",
-        unsafe_allow_html=True,
+"""
     )
 
 
@@ -934,7 +965,6 @@ def require_login():
     account = st.session_state.get("auth_account")
     expired = False
 
-    # Older signed-in sessions must complete the new code step.
     if (
         account
         and account.get("mode") == "signed_in"
