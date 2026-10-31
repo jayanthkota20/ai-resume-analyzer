@@ -2,6 +2,7 @@ import hashlib
 import re
 from html import escape
 from urllib.parse import urlencode
+import os
 
 import streamlit as st
 
@@ -1623,14 +1624,34 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Ollama is disabled unless explicitly enabled for local development.
+allow_ollama = (
+    os.getenv("ENABLE_OLLAMA", "false").strip().lower()
+    == "true"
+)
+
+provider_options = (
+    ["Gemini", "Ollama"]
+    if allow_ollama
+    else ["Gemini"]
+)
+
+# Clear an older Ollama selection when it is unavailable.
+if st.session_state.get("selected_provider") not in provider_options:
+    st.session_state["selected_provider"] = "Gemini"
+
 with st.container(key="provider_header"):
-    provider = st.radio(
-        "AI provider",
-        ["Ollama", "Gemini"],
-        horizontal=True,
-        label_visibility="collapsed",
-        key="selected_provider",
-    )
+    if allow_ollama:
+        provider = st.radio(
+            "AI provider",
+            provider_options,
+            horizontal=True,
+            label_visibility="collapsed",
+            key="selected_provider",
+        )
+    else:
+        provider = "Gemini"
+        st.markdown("**Gemini**")
 
 ollama_model = "qwen2.5:3b"
 
