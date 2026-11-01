@@ -1754,7 +1754,6 @@ with left:
             ),
         )
 
-
 with right:
     with st.container(border=True):
         st.subheader("Where do you want to go?")
@@ -1762,12 +1761,16 @@ with right:
 
         target_role = st.text_input(
             "Target role",
+            value="",
             placeholder="For example: Data Analyst",
+            key="goal_target_role",
         )
 
         location = st.text_input(
             "Preferred location",
+            value="",
             placeholder="For example: Oklahoma City or Remote",
+            key="goal_location",
         )
 
         job_type = st.selectbox(
@@ -1778,6 +1781,18 @@ with right:
                 "Internship",
                 "Contract",
             ],
+            index=0,
+            key="goal_job_type",
+        )
+
+        job_description = st.text_area(
+            "Job description",
+            value="",
+            height=120,
+            placeholder=(
+                "Paste a job description to compare requirements."
+            ),
+            key="goal_job_description",
         )
 
         job_description = st.text_area(
