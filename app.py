@@ -57,6 +57,7 @@ LEARNING_RESOURCES = {
         "websites": {
             "Kaggle Learn": "https://www.kaggle.com/learn",
             "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
+            "W3Schools": "https://www.w3schools.com/sql/",
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
             "pandas documentation": "https://pandas.pydata.org/docs/getting_started/",
         },
@@ -70,6 +71,7 @@ LEARNING_RESOURCES = {
             "Kaggle Learn": "https://www.kaggle.com/learn/intro-to-machine-learning",
             "scikit-learn": "https://scikit-learn.org/stable/tutorial/index.html",
             "fast.ai": "https://course.fast.ai/",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Cybersecurity": {
@@ -81,6 +83,7 @@ LEARNING_RESOURCES = {
             "TryHackMe": "https://tryhackme.com/",
             "Cisco Skills for All": "https://skillsforall.com/",
             "OverTheWire": "https://overthewire.org/wargames/",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Frontend Development": {
@@ -103,6 +106,7 @@ LEARNING_RESOURCES = {
             "Django": "https://docs.djangoproject.com/en/stable/intro/",
             "MDN": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side",
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Full Stack Development": {
@@ -114,6 +118,7 @@ LEARNING_RESOURCES = {
             "The Odin Project": "https://www.theodinproject.com/",
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
             "MDN": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Generative AI": {
@@ -125,6 +130,7 @@ LEARNING_RESOURCES = {
             "Google AI": "https://ai.google.dev/gemini-api/docs",
             "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
             "DeepLearning.AI": "https://www.deeplearning.ai/short-courses/",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "AWS": {
@@ -136,6 +142,7 @@ LEARNING_RESOURCES = {
             "AWS Workshops": "https://workshops.aws/",
             "AWS documentation": "https://docs.aws.amazon.com/",
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Cloud Computing": {
@@ -147,6 +154,7 @@ LEARNING_RESOURCES = {
             "Google Cloud Skills Boost": "https://www.cloudskillsboost.google/",
             "AWS Skill Builder": "https://skillbuilder.aws/",
             "Google Cloud documentation": "https://cloud.google.com/docs",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "DevOps": {
@@ -158,6 +166,7 @@ LEARNING_RESOURCES = {
             "Kubernetes": "https://kubernetes.io/docs/tutorials/",
             "GitHub Actions": "https://docs.github.com/en/actions",
             "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Git and GitHub": {
@@ -169,6 +178,7 @@ LEARNING_RESOURCES = {
             "Git book": "https://git-scm.com/book/en/v2",
             "Learn Git Branching": "https://learngitbranching.js.org/",
             "Atlassian Git tutorials": "https://www.atlassian.com/git/tutorials",
+            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
 }
@@ -1048,7 +1058,143 @@ with st.container(key="notes_header"):
 # ---------------------------------------------------------
 
 st.markdown(
-    f'<div class="brand">{BRAND}</div>',
+    """
+<style>
+.motivation-background {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.motivation-background span {
+    position: absolute;
+    display: block;
+    max-width: 260px;
+    color: #54796f;
+    opacity: 0.22;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(16px, 1.5vw, 23px);
+    font-style: italic;
+    font-weight: 600;
+    line-height: 1.5;
+    background: none;
+    border: none;
+    box-shadow: none;
+    animation: backgroundDrift 16s ease-in-out infinite alternate;
+}
+
+.motivation-background span:nth-child(1) {
+    top: 17%;
+    left: 3%;
+    transform: rotate(-9deg);
+}
+
+.motivation-background span:nth-child(2) {
+    top: 34%;
+    right: 3%;
+    animation-delay: -4s;
+}
+
+.motivation-background span:nth-child(3) {
+    top: 57%;
+    left: 2%;
+    animation-delay: -8s;
+}
+
+.motivation-background span:nth-child(4) {
+    top: 76%;
+    right: 3%;
+    animation-delay: -6s;
+}
+
+.motivation-background span:nth-child(5) {
+    top: 85%;
+    left: 6%;
+    animation-delay: -10s;
+}
+
+.motivation-background span:nth-child(6) {
+    top: 10%;
+    right: 5%;
+    animation-delay: -12s;
+}
+
+.motivation-background span:nth-child(7) {
+    top: 48%;
+    right: 1%;
+    animation-delay: -2s;
+}
+
+/* Keep the page content above the decorative background. */
+.stApp [data-testid="stMainBlockContainer"] {
+    position: relative;
+    z-index: 1;
+}
+
+/* Give input sections a clean surface. */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #ffffff;
+}
+
+@keyframes backgroundDrift {
+    from {
+        translate: 0 0;
+    }
+    to {
+        translate: 10px -24px;
+    }
+}
+
+@media (max-width: 900px) {
+    .motivation-background span {
+        font-size: 16px;
+        opacity: 0.12;
+        max-width: 160px;
+    }
+
+    .motivation-background span:nth-child(n+5) {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .motivation-background span {
+        animation: none;
+    }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+quotes = [
+    "It's still day one",
+    "Every search counts",
+    "Never give up",
+    "Your search matters",
+    "Your life and skills are valuable",
+    "Every rejection can lead to a better opportunity",
+    "Success isn't always an easy journey",
+]
+
+background_quotes = "".join(
+    f"<span>{escape(quote)}</span>"
+    for quote in quotes
+)
+
+st.markdown(
+    f"""
+<div class="motivation-background" aria-hidden="true">
+    {background_quotes}
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    f'<div class="brand">{escape(BRAND)}</div>',
     unsafe_allow_html=True,
 )
 
@@ -1064,36 +1210,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-quotes = [
-    "It's still day one",
-    "Every search counts",
-    "Never give up",
-    "Your search matters",
-    "Your life and skills are valuable",
-    "Every rejection can lead to a better opportunity",
-    "Success isn't always an easy journey",
-]
-
-quote_cards = "".join(
-    f'<div class="quote-card">{escape(quote)}</div>'
-    for quote in quotes
-)
-
-st.markdown(
-    f"""
-<div class="quote-window">
-    <div class="quote-track">
-        {quote_cards}
-        <div style="display:contents" aria-hidden="true">
-            {quote_cards}
-        </div>
-    </div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
-
 
 # ---------------------------------------------------------
 # Resume and goals
