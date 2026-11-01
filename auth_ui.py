@@ -14,7 +14,7 @@ from firebase_auth import (
 )
 
 
-AUTH_FLOW_VERSION = 2
+AUTH_FLOW_VERSION = 3
 RESEND_COOLDOWN = 60
 
 
@@ -549,12 +549,12 @@ def _request_verification_email():
         "pending_email_verification"
     ] = pending
 
-
 def _finish_sign_in(response):
     email = response.get("email")
     uid = response.get("localId")
+    token = response.get("idToken")
 
-    if not email or not uid:
+    if not email or not uid or not token:
         raise ValueError(
             "Firebase returned an incomplete sign-in response."
         )
@@ -563,6 +563,31 @@ def _finish_sign_in(response):
         raise ValueError(
             "Please verify your email before signing in."
         )
+
+    try:
+        lifetime = int(response.get("expiresIn", 3600))
+    except (TypeError, ValueError):
+        raise ValueError(
+            "Firebase returned an invalid session duration."
+        ) from None
+
+    if lifetime <= 60:
+        raise ValueError(
+            "Your session has expired. Please sign in again."
+        )
+
+    _clear_session()
+
+    st.session_state["auth_account"] = {
+        "mode": "signed_in",
+        "email": email,
+        "uid": uid,
+        "id_token": token,
+        "email_verified": True,
+        "expires_at": time.time() + lifetime - 60,
+        "auth_flow_version": AUTH_FLOW_VERSION,
+    }
+    st.rerun()
 
     try:
         lifetime = int(response.get("expiresIn", 3600))
