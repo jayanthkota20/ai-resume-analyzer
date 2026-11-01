@@ -2,6 +2,7 @@ import hashlib
 import re
 from html import escape
 from urllib.parse import urlencode
+from profile_ui import show_profile
 import os
 
 import streamlit as st
@@ -1617,6 +1618,7 @@ def sample_result():
 
 # Show the analyzer only after sign-in or guest access.
 require_login()
+show_profile()
 
 
 st.markdown(
@@ -1761,18 +1763,123 @@ with right:
 
         target_role = st.text_input(
             "Target role",
-            value="",
             placeholder="For example: Data Analyst",
             key="goal_target_role",
         )
 
-        location = st.text_input(
-            "Preferred location",
-            value="",
-            placeholder="For example: Oklahoma City or Remote",
-            key="goal_location",
+        state_options = [
+            "Any location",
+            "Remote",
+            "Alabama",
+            "Alaska",
+            "Arizona",
+            "Arkansas",
+            "California",
+            "Colorado",
+            "Connecticut",
+            "Delaware",
+            "District of Columbia",
+            "Florida",
+            "Georgia",
+            "Hawaii",
+            "Idaho",
+            "Illinois",
+            "Indiana",
+            "Iowa",
+            "Kansas",
+            "Kentucky",
+            "Louisiana",
+            "Maine",
+            "Maryland",
+            "Massachusetts",
+            "Michigan",
+            "Minnesota",
+            "Mississippi",
+            "Missouri",
+            "Montana",
+            "Nebraska",
+            "Nevada",
+            "New Hampshire",
+            "New Jersey",
+            "New Mexico",
+            "New York",
+            "North Carolina",
+            "North Dakota",
+            "Ohio",
+            "Oklahoma",
+            "Oregon",
+            "Pennsylvania",
+            "Rhode Island",
+            "South Carolina",
+            "South Dakota",
+            "Tennessee",
+            "Texas",
+            "Utah",
+            "Vermont",
+            "Virginia",
+            "Washington",
+            "West Virginia",
+            "Wisconsin",
+            "Wyoming",
+        ]
+
+        selected_state = st.selectbox(
+            "Preferred state",
+            options=state_options,
+            index=0,
+            key="goal_state",
         )
 
+        city = ""
+
+        if selected_state not in (
+            "Any location",
+            "Remote",
+        ):
+            city = st.text_input(
+                "Preferred city",
+                placeholder="Optional—for example: Oklahoma City",
+                key="goal_city",
+            ).strip()
+
+        # Keep the existing location variable used by job searches.
+        if selected_state == "Any location":
+            location = ""
+
+        elif selected_state == "Remote":
+            location = "Remote"
+
+        elif city:
+            location = (
+                f"{city}, {selected_state}, United States"
+            )
+
+        else:
+            location = (
+                f"{selected_state}, United States"
+            )
+
+        job_type = st.selectbox(
+            "Job type",
+            options=[
+                "All types",
+                "Full-time",
+                "Internship",
+                "Contract",
+            ],
+            index=0,
+            key="goal_job_type",
+        )
+
+        job_description = st.text_area(
+            "Job description",
+            height=120,
+            placeholder=(
+                "Paste a job description "
+                "to compare requirements."
+            ),
+            key="goal_job_description",
+        )
         job_type = st.selectbox(
             "Job type",
             [
