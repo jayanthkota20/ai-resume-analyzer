@@ -451,4 +451,178 @@ def show_profile():
                 st.rerun()
 
             except ValueError as error:
+                st.error(str(error))@st.dialog("My Profile", width="large")
+def show_profile():
+    account = st.session_state.get("auth_account", {})
+
+    if account.get("mode") != "signed_in":
+        st.info("Sign in to save your applicant profile.")
+        return
+
+    # Clear widget values before creating the form on this run.
+    if st.session_state.pop("profile_reset_widgets", False):
+        _clear_profile_widgets()
+        st.session_state.pop("confirm_profile_delete", None)
+
+    if (
+        st.session_state.get("profile_loaded_uid")
+        != account.get("uid")
+    ):
+        try:
+            with st.spinner("Loading your profile..."):
+                profile, version = _load_profile()
+
+            _clear_profile_widgets()
+
+            st.session_state["saved_profile"] = profile
+            st.session_state["profile_version"] = version
+            st.session_state["profile_loaded_uid"] = account["uid"]
+
+        except ValueError as error:
+            st.error(str(error))
+            return
+
+    notice = st.session_state.pop("profile_notice", None)
+
+    if notice:
+        st.success(notice)
+
+    st.caption(f"Signed in as {account['email']}")
+    st.caption(
+        "Update your details and click Save profile. "
+        "Saving a profile does not submit job applications."
+    )
+
+    saved = st.session_state.get("saved_profile", {})
+
+    with st.form("applicant_profile_form"):
+        draft = {}
+
+        st.subheader("Contact details")
+
+        contact_columns = st.columns(2)
+
+        for index, (name, label, maximum) in enumerate(
+            PROFILE_FIELDS
+        ):
+            widget_key = f"profile_field_{name}"
+
+            if name in LONG_FIELDS:
+                continue
+
+            with contact_columns[index % 2]:
+                draft[name] = st.text_input(
+                    label,
+                    value=saved.get(name, ""),
+                    max_chars=maximum,
+                    key=widget_key,
+                )
+
+        st.subheader("Experience and career details")
+
+        for name, label, maximum in PROFILE_FIELDS:
+            if name not in LONG_FIELDS:
+                continue
+
+            draft[name] = st.text_area(
+                label,
+                value=saved.get(name, ""),
+                max_chars=maximum,
+                height=110,
+                key=f"profile_field_{name}",
+            )
+
+        save_clicked = st.form_submit_button(
+            "Save profile",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if save_clicked:
+        try:
+            with st.spinner("Saving your profile..."):
+                profile, version = _save_profile(
+                    draft,
+                    st.session_state.get("profile_version"),
+                )
+
+            st.session_state["saved_profile"] = profile
+            st.session_state["profile_version"] = version
+            st.success("Your profile has been saved.")
+
+        except ValueError as error:
+            st.error(str(error))
+
+    reload_column, download_column = st.columns(2)
+
+    with reload_column:
+        if st.button(
+            "Reload saved profile",
+            key="reload_saved_profile",
+            use_container_width=True,
+        ):
+            try:
+                with st.spinner("Reloading your profile..."):
+                    profile, version = _load_profile()
+
+                st.session_state["saved_profile"] = profile
+                st.session_state["profile_version"] = version
+                st.session_state["profile_reset_widgets"] = True
+                st.session_state["profile_notice"] = (
+                    "Saved profile loaded. Unsaved edits were discarded."
+                )
+
+                st.rerun(scope="fragment")
+
+            except ValueError as error:
+                st.error(str(error))
+
+    with download_column:
+        st.download_button(
+            "Download saved profile",
+            data=_profile_text(
+                st.session_state.get("saved_profile", {}),
+                account["email"],
+            ),
+            file_name="applicant_profile.txt",
+            mime="text/plain",
+            key="download_saved_profile",
+            use_container_width=True,
+            on_click="ignore",
+        )
+
+    with st.expander("Delete saved profile"):
+        confirm_delete = st.checkbox(
+            "I want to delete my saved profile",
+            key="confirm_profile_delete",
+        )
+
+        if st.button(
+            "Delete profile",
+            key="delete_saved_profile",
+            disabled=not confirm_delete,
+        ):
+            try:
+                version = st.session_state.get("profile_version")
+
+                params = (
+                    {"currentDocument.updateTime": version}
+                    if version
+                    else None
+                )
+
+                with st.spinner("Deleting your saved profile..."):
+                    _request("DELETE", params=params)
+
+                st.session_state["saved_profile"] = {}
+                st.session_state["profile_version"] = None
+                st.session_state["profile_reset_widgets"] = True
+                st.session_state["profile_notice"] = (
+                    "Your saved profile was deleted. "
+                    "Your sign-in account is unchanged."
+                )
+
+                st.rerun(scope="fragment")
+
+            except ValueError as error:
                 st.error(str(error))

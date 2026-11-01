@@ -1,14 +1,16 @@
 import hashlib
+import json
+import os
 import re
 from html import escape
+from time import perf_counter
 from urllib.parse import urlencode
-from profile_ui import show_profile
-import os
 
 import streamlit as st
 
 from ai_analyzer import analyze_resume
-from auth_ui import require_login
+from auth_ui import require_login, sign_out
+from profile_ui import show_profile
 from resume_parser import extract_resume_text
 
 
@@ -21,493 +23,198 @@ st.set_page_config(
 )
 
 
-# Fixed learning catalog: the AI does not generate website URLs.
+# ---------------------------------------------------------
+# Learning resources
+# ---------------------------------------------------------
+
 LEARNING_RESOURCES = {
     "Python": {
         "pattern": r"\bpython\b",
-        "focus": "Variables, functions, collections, and reading files.",
-        "project": (
-            "Build an expense tracker that reads and writes CSV files, "
-            "groups expenses by category, and handles invalid input."
-        ),
+        "focus": "Functions, collections, files, and error handling.",
+        "project": "Build a CSV expense tracker with category summaries.",
         "websites": {
-            "W3Schools — Python": "https://www.w3schools.com/python/",
+            "Python documentation": "https://docs.python.org/3/tutorial/",
+            "W3Schools": "https://www.w3schools.com/python/",
+            "freeCodeCamp": "https://www.freecodecamp.org/learn/",
+            "Kaggle Learn": "https://www.kaggle.com/learn/python",
         },
     },
     "SQL": {
-        "pattern": r"\bsql\b|\bjoins?\b|\bdatabase\b",
-        "focus": "Filtering, joins, grouping, and aggregate functions.",
-        "project": (
-            "Create customers, products, and orders tables in SQLite. "
-            "Use joins and GROUP BY to answer five business questions "
-            "and document your queries."
-        ),
+        "pattern": r"\bsql\b|\bdatabase\b|\bjoins?\b",
+        "focus": "Filtering, joins, grouping, and database design.",
+        "project": "Create an orders database and answer five business questions.",
         "websites": {
-            "W3Schools — SQL": "https://www.w3schools.com/sql/",
+            "SQLBolt": "https://sqlbolt.com/",
+            "W3Schools": "https://www.w3schools.com/sql/",
+            "Kaggle Learn": "https://www.kaggle.com/learn/intro-to-sql",
+            "PostgreSQL tutorial": "https://www.postgresql.org/docs/current/tutorial.html",
         },
     },
     "Data Analysis": {
-        "pattern": (
-            r"\bpandas\b|data clean|data analy|"
-            r"visuali[sz]|dashboard"
-        ),
-        "focus": (
-            "Reading tables, cleaning data, calculating summary "
-            "statistics, combining tables, and creating plots."
-        ),
-        "project": (
-            "Analyze a public CSV dataset. Check missing values and "
-            "duplicates, explain your cleaning decisions, create three "
-            "charts, and document three findings."
-        ),
+        "pattern": r"data analy|pandas|excel|tableau|power bi",
+        "focus": "Cleaning data, exploring patterns, and explaining findings.",
+        "project": "Clean a public dataset and create a dashboard with findings.",
         "websites": {
-            "pandas — Getting started": (
-                "https://pandas.pydata.org/docs/"
-                "getting_started/intro_tutorials/"
-            ),
+            "Kaggle Learn": "https://www.kaggle.com/learn",
+            "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
+            "freeCodeCamp": "https://www.freecodecamp.org/learn/",
+            "pandas documentation": "https://pandas.pydata.org/docs/getting_started/",
         },
     },
     "Machine Learning": {
-        "pattern": (
-            r"machine learning|scikit|model evaluation|"
-            r"cross.validation|\bclassification\b|\bregression\b"
-        ),
-        "focus": (
-            "Preprocessing, model fitting, train/test splits, "
-            "and evaluation. Basic Python and ML knowledge helps."
-        ),
-        "project": (
-            "Compare a baseline with a trained model on a public dataset. "
-            "Separate training and test data, avoid data leakage, and "
-            "explain the evaluation metrics and limitations."
-        ),
+        "pattern": r"machine learning|\bml\b|scikit|classification|regression",
+        "focus": "Train/test splits, baseline models, and evaluation.",
+        "project": "Compare two classifiers and explain their evaluation results.",
         "websites": {
-            "scikit-learn — Getting started": (
-                "https://scikit-learn.org/stable/getting_started.html"
-            ),
-        },
-    },
-    "Statistics": {
-        "pattern": r"statistic|probability|hypothesis",
-        "focus": (
-            "Descriptive statistics, probability, sampling, "
-            "and interpreting uncertainty."
-        ),
-        "project": (
-            "Explore a public dataset. Compare two groups, visualize "
-            "their distributions, and explain why an observed "
-            "relationship does not prove causation."
-        ),
-        "websites": {
-            "Khan Academy — Statistics and probability": (
-                "https://www.khanacademy.org/math/statistics-probability"
-            ),
+            "Google ML courses": "https://developers.google.com/machine-learning",
+            "Kaggle Learn": "https://www.kaggle.com/learn/intro-to-machine-learning",
+            "scikit-learn": "https://scikit-learn.org/stable/tutorial/index.html",
+            "fast.ai": "https://course.fast.ai/",
         },
     },
     "Cybersecurity": {
-        "pattern": (
-            r"cyber.?security|information security|security operations|"
-            r"\bsoc\b|incident response|threat detection|network security"
-        ),
-        "focus": (
-            "Security fundamentals, common threats, network protection, "
-            "and incident response concepts."
-        ),
-        "project": (
-            "Use sample security logs in a local lab to identify suspicious "
-            "activity. Write an incident timeline, explain the evidence, "
-            "and suggest defensive actions."
-        ),
+        "pattern": r"cyber|security|soc\b|siem|network defense",
+        "focus": "Networking, Linux, log analysis, and defensive security.",
+        "project": "Analyze sample authentication logs and document suspicious events.",
         "websites": {
-            "Cisco Networking Academy": (
-                "https://www.netacad.com/courses/"
-                "introduction-to-cybersecurity"
-            ),
-            "W3Schools — Cybersecurity": (
-                "https://www.w3schools.com/cybersecurity/"
-            ),
-            "PortSwigger — Web security labs": (
-                "https://portswigger.net/web-security"
-            ),
-        },
-    },
-    "Web Security": {
-        "pattern": (
-            r"web security|application security|\bowasp\b|"
-            r"\bxss\b|sql injection"
-        ),
-        "focus": (
-            "Web vulnerabilities, authentication weaknesses, "
-            "and defensive fixes using training labs."
-        ),
-        "project": (
-            "Complete beginner labs in a provided training environment. "
-            "Write a report explaining the vulnerability, the evidence "
-            "observed, and a defensive fix."
-        ),
-        "websites": {
-            "PortSwigger — Web Security Academy": (
-                "https://portswigger.net/web-security"
-            ),
-            "W3Schools — Cybersecurity foundations": (
-                "https://www.w3schools.com/cybersecurity/"
-            ),
+            "PortSwigger Academy": "https://portswigger.net/web-security",
+            "TryHackMe": "https://tryhackme.com/",
+            "Cisco Skills for All": "https://skillsforall.com/",
+            "OverTheWire": "https://overthewire.org/wargames/",
         },
     },
     "Frontend Development": {
-        "pattern": (
-            r"front.?end|\bhtml\b|\bcss\b|\bjavascript\b|"
-            r"\breact\b|responsive design|accessibility"
-        ),
-        "focus": (
-            "HTML, CSS, JavaScript, responsive layouts, "
-            "accessible forms, and browser interactions."
-        ),
-        "project": (
-            "Build a responsive job-search interface with filters, saved "
-            "job cards, and accessible forms. Test keyboard navigation "
-            "and layouts on different screen sizes."
-        ),
+        "pattern": r"front.?end|html|css|javascript|react|typescript",
+        "focus": "Accessible HTML, responsive CSS, JavaScript, and UI state.",
+        "project": "Build a responsive job tracker with filtering and local storage.",
         "websites": {
-            "MDN Web Docs": (
-                "https://developer.mozilla.org/en-US/docs/"
-                "Learn_web_development"
-            ),
-            "W3Schools — HTML": "https://www.w3schools.com/html/",
-            "W3Schools — JavaScript": "https://www.w3schools.com/js/",
-            "The Odin Project": "https://www.theodinproject.com/paths",
+            "MDN": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
+            "freeCodeCamp": "https://www.freecodecamp.org/learn/",
+            "The Odin Project": "https://www.theodinproject.com/",
+            "W3Schools": "https://www.w3schools.com/",
         },
     },
     "Backend Development": {
-        "pattern": (
-            r"back.?end|server.?side|rest(?:ful)? api|"
-            r"\bnode\.?js\b|\bdjango\b|\bflask\b|\bfastapi\b"
-        ),
-        "focus": (
-            "HTTP, API design, server-side validation, databases, "
-            "authentication, and error handling."
-        ),
-        "project": (
-            "Build a task-management API with a database. Add input "
-            "validation, authentication, checks that users can access "
-            "only their own tasks, and tests for rejected requests."
-        ),
+        "pattern": r"back.?end|rest|api\b|django|flask|fastapi|node",
+        "focus": "APIs, validation, databases, authentication, and testing.",
+        "project": "Build a task API with authenticated access and input validation.",
         "websites": {
-            "MDN — Server-side development": (
-                "https://developer.mozilla.org/en-US/docs/"
-                "Learn_web_development/Extensions/Server-side"
-            ),
-            "The Odin Project": "https://www.theodinproject.com/paths",
-            "Full Stack Open": "https://fullstackopen.com/en/",
+            "FastAPI": "https://fastapi.tiangolo.com/tutorial/",
+            "Django": "https://docs.djangoproject.com/en/stable/intro/",
+            "MDN": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side",
+            "freeCodeCamp": "https://www.freecodecamp.org/learn/",
         },
     },
     "Full Stack Development": {
-        "pattern": r"full.?stack|end.to.end web|\bmern\b|mean stack",
-        "focus": (
-            "Connecting a frontend, backend API, database, "
-            "authentication, and deployment."
-        ),
-        "project": (
-            "Build a job-application tracker with a frontend, backend, "
-            "and database. Let users manage their own applications, "
-            "filter by status, and view application totals."
-        ),
+        "pattern": r"full.?stack",
+        "focus": "Connect a frontend, backend, and database.",
+        "project": "Build a job application tracker with accounts and saved applications.",
         "websites": {
-            "The Odin Project": "https://www.theodinproject.com/paths",
             "Full Stack Open": "https://fullstackopen.com/en/",
-            "MDN Web Docs": (
-                "https://developer.mozilla.org/en-US/docs/"
-                "Learn_web_development"
-            ),
+            "The Odin Project": "https://www.theodinproject.com/",
+            "freeCodeCamp": "https://www.freecodecamp.org/learn/",
+            "MDN": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
         },
     },
     "Generative AI": {
-        "pattern": (
-            r"generative ai|\bgen\s?ai\b|\bllms?\b|\brag\b|"
-            r"retrieval.augmented|prompt engineering|"
-            r"\bembeddings?\b|transformers"
-        ),
-        "focus": (
-            "Language models, prompting, embeddings, retrieval, "
-            "response evaluation, and application limitations."
-        ),
-        "project": (
-            "Build a question-answering tool over a small set of public "
-            "documents. Show source references and test whether it "
-            "declines questions the documents cannot answer."
-        ),
+        "pattern": r"generative|\bgen.?ai\b|\bllm\b|\brag\b|prompt|embedding",
+        "focus": "LLMs, retrieval, evaluation, and evidence-based responses.",
+        "project": "Build a document assistant that answers with source references.",
         "websites": {
-            "Microsoft — Generative AI for Beginners": (
-                "https://microsoft.github.io/"
-                "generative-ai-for-beginners/"
-            ),
-            "Hugging Face — LLM Course": (
-                "https://huggingface.co/learn/llm-course/chapter1/1"
-            ),
+            "Hugging Face": "https://huggingface.co/learn",
+            "Google AI": "https://ai.google.dev/gemini-api/docs",
+            "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
+            "DeepLearning.AI": "https://www.deeplearning.ai/short-courses/",
         },
     },
     "AWS": {
-        "pattern": (
-            r"\baws\b|amazon web services|\bec2\b|"
-            r"\bs3\b|cloudwatch|aws lambda"
-        ),
-        "focus": (
-            "AWS services, IAM, compute, storage, networking, "
-            "monitoring, and cost management."
-        ),
-        "project": (
-            "Design an AWS architecture for a small web application. "
-            "Explain service choices, access controls, monitoring, and "
-            "estimated costs. A diagram and design document can be "
-            "completed without deploying paid resources."
-        ),
+        "pattern": r"\baws\b|amazon web|ec2|s3\b|lambda",
+        "focus": "IAM, storage, compute, monitoring, and cost awareness.",
+        "project": "Design a small web app architecture and document IAM permissions.",
         "websites": {
             "AWS Skill Builder": "https://skillbuilder.aws/",
-            "W3Schools — AWS fundamentals": (
-                "https://www.w3schools.com/aws/"
-            ),
+            "AWS Workshops": "https://workshops.aws/",
+            "AWS documentation": "https://docs.aws.amazon.com/",
+            "freeCodeCamp": "https://www.freecodecamp.org/learn/",
         },
     },
     "Cloud Computing": {
-        "pattern": (
-            r"\bcloud\b|\bazure\b|\bgcp\b|"
-            r"google cloud|cloud architecture"
-        ),
-        "focus": (
-            "Cloud service models, identity, networking, availability, "
-            "shared responsibility, and cost awareness."
-        ),
-        "project": (
-            "Compare two cloud deployment designs for a small application. "
-            "Document availability, security controls, backup strategy, "
-            "and cost tradeoffs."
-        ),
+        "pattern": r"\bcloud\b|azure|gcp|google cloud",
+        "focus": "Cloud services, networking, identity, deployment, and monitoring.",
+        "project": "Deploy a small app and document its architecture and operating costs.",
         "websites": {
-            "Microsoft Learn — Azure": (
-                "https://learn.microsoft.com/en-us/training/azure/"
-            ),
+            "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
+            "Google Cloud Skills Boost": "https://www.cloudskillsboost.google/",
             "AWS Skill Builder": "https://skillbuilder.aws/",
-            "W3Schools — AWS fundamentals": (
-                "https://www.w3schools.com/aws/"
-            ),
+            "Google Cloud documentation": "https://cloud.google.com/docs",
+        },
+    },
+    "DevOps": {
+        "pattern": r"devops|docker|kubernetes|ci/cd|terraform|linux",
+        "focus": "Containers, automation, CI pipelines, and deployment.",
+        "project": "Containerize an app and create a pipeline that runs its checks.",
+        "websites": {
+            "Docker": "https://docs.docker.com/get-started/",
+            "Kubernetes": "https://kubernetes.io/docs/tutorials/",
+            "GitHub Actions": "https://docs.github.com/en/actions",
+            "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
+        },
+    },
+    "Git and GitHub": {
+        "pattern": r"\bgit\b|\bgithub\b|version control",
+        "focus": "Commits, branches, pull requests, and resolving conflicts.",
+        "project": "Publish a project with a README and complete a feature using a branch.",
+        "websites": {
+            "GitHub Skills": "https://skills.github.com/",
+            "Git book": "https://git-scm.com/book/en/v2",
+            "Learn Git Branching": "https://learngitbranching.js.org/",
+            "Atlassian Git tutorials": "https://www.atlassian.com/git/tutorials",
         },
     },
 }
-# Give every learning topic at least three website choices.
-LEARNING_WEBSITES = {
-    "Python": {
-        "W3Schools — Python": (
-            "https://www.w3schools.com/python/"
-        ),
-        "Google — Python Class": (
-            "https://developers.google.com/edu/python"
-        ),
-        "Python.org — Official Tutorial": (
-            "https://docs.python.org/3/tutorial/"
-        ),
-    },
-
-    "SQL": {
-        "W3Schools — SQL": (
-            "https://www.w3schools.com/sql/"
-        ),
-        "SQLBolt — Interactive Lessons": (
-            "https://sqlbolt.com/"
-        ),
-        "SQLZoo — Tutorials and Exercises": (
-            "https://sqlzoo.net/wiki/SQL_Tutorial"
-        ),
-    },
-
-    "Data Analysis": {
-        "pandas — Official Tutorials": (
-            "https://pandas.pydata.org/docs/"
-            "getting_started/intro_tutorials/"
-        ),
-        "Kaggle — Pandas": (
-            "https://www.kaggle.com/learn/pandas"
-        ),
-        "W3Schools — Pandas": (
-            "https://www.w3schools.com/python/pandas/"
-        ),
-    },
-
-    "Machine Learning": {
-        "Google — Machine Learning Crash Course": (
-            "https://developers.google.com/"
-            "machine-learning/crash-course"
-        ),
-        "Kaggle — Intro to Machine Learning": (
-            "https://www.kaggle.com/learn/intro-to-machine-learning"
-        ),
-        "scikit-learn — Official Guide": (
-            "https://scikit-learn.org/stable/getting_started.html"
-        ),
-    },
-
-    "Statistics": {
-        "Khan Academy — Statistics and Probability": (
-            "https://www.khanacademy.org/math/statistics-probability"
-        ),
-        "OpenStax — Introductory Statistics": (
-            "https://openstax.org/details/books/"
-            "introductory-statistics-2e"
-        ),
-        "OpenIntro — Statistics": (
-            "https://www.openintro.org/book/os/"
-        ),
-    },
-
-    "Cybersecurity": {
-        "Cisco — Introduction to Cybersecurity": (
-            "https://www.netacad.com/courses/"
-            "introduction-to-cybersecurity"
-        ),
-        "W3Schools — Cybersecurity": (
-            "https://www.w3schools.com/cybersecurity/"
-        ),
-        "PortSwigger — Web Security Academy": (
-            "https://portswigger.net/web-security"
-        ),
-        "OWASP — Web Security Testing Guide": (
-            "https://owasp.org/projects/web-security-testing-guide"
-        ),
-    },
-
-    "Web Security": {
-        "PortSwigger — Web Security Academy": (
-            "https://portswigger.net/web-security"
-        ),
-        "OWASP — Web Security Testing Guide": (
-            "https://owasp.org/projects/web-security-testing-guide"
-        ),
-        "W3Schools — Security Foundations": (
-            "https://www.w3schools.com/cybersecurity/"
-        ),
-    },
-
-    "Frontend Development": {
-        "MDN — Web Development": (
-            "https://developer.mozilla.org/en-US/docs/"
-            "Learn_web_development"
-        ),
-        "W3Schools — HTML": (
-            "https://www.w3schools.com/html/"
-        ),
-        "The Odin Project — Learning Paths": (
-            "https://www.theodinproject.com/paths"
-        ),
-        "Full Stack Open — React and Web Development": (
-            "https://fullstackopen.com/en/"
-        ),
-    },
-
-    "Backend Development": {
-        "MDN — Server-side Development": (
-            "https://developer.mozilla.org/en-US/docs/"
-            "Learn_web_development/Extensions/Server-side"
-        ),
-        "The Odin Project — Learning Paths": (
-            "https://www.theodinproject.com/paths"
-        ),
-        "Full Stack Open — Backend and APIs": (
-            "https://fullstackopen.com/en/"
-        ),
-    },
-
-    "Full Stack Development": {
-        "The Odin Project — Full Stack Paths": (
-            "https://www.theodinproject.com/paths"
-        ),
-        "Full Stack Open": (
-            "https://fullstackopen.com/en/"
-        ),
-        "MDN — Web Development": (
-            "https://developer.mozilla.org/en-US/docs/"
-            "Learn_web_development"
-        ),
-    },
-
-    "Generative AI": {
-        "Microsoft — Generative AI for Beginners": (
-            "https://microsoft.github.io/"
-            "generative-ai-for-beginners/"
-        ),
-        "Hugging Face — LLM Course": (
-            "https://huggingface.co/learn/llm-course/chapter1/1"
-        ),
-        "Google — Introduction to LLMs": (
-            "https://developers.google.com/"
-            "machine-learning/crash-course/llm"
-        ),
-    },
-
-    "AWS": {
-        "AWS — Skill Builder": (
-            "https://skillbuilder.aws/"
-        ),
-        "W3Schools — AWS Fundamentals": (
-            "https://www.w3schools.com/aws/"
-        ),
-        "freeCodeCamp — Cloud Practitioner Video Course": (
-            "https://www.freecodecamp.org/news/"
-            "aws-certified-cloud-practitioner-study-course-"
-            "pass-the-exam-with-this-free-13-hour-course"
-        ),
-    },
-
-    "Cloud Computing": {
-        "Microsoft Learn — Azure": (
-            "https://learn.microsoft.com/en-us/training/azure/"
-        ),
-        "AWS — Skill Builder": (
-            "https://skillbuilder.aws/"
-        ),
-        "Google Cloud — Training": (
-            "https://cloud.google.com/learn/training"
-        ),
-        "W3Schools — AWS Fundamentals": (
-            "https://www.w3schools.com/aws/"
-        ),
-    },
-}
-
-for topic_name, websites in LEARNING_WEBSITES.items():
-    LEARNING_RESOURCES[topic_name]["websites"] = websites
-
-PLATFORM_STYLES = {
-    "LinkedIn": ("job-linkedin", "in"),
-    "Indeed": ("job-indeed", "I"),
-    "Dice": ("job-dice", "D"),
-    "Glassdoor": ("job-glassdoor", "G"),
-    "ZipRecruiter": ("job-ziprecruiter", "Z"),
-}
 
 
-st.markdown(
-    """
+US_STATES = [
+    "Any location", "Remote",
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California",
+    "Colorado", "Connecticut", "Delaware", "District of Columbia",
+    "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana",
+    "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
+    "Massachusetts", "Michigan", "Minnesota", "Mississippi",
+    "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+    "New Jersey", "New Mexico", "New York", "North Carolina",
+    "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
+    "Rhode Island", "South Carolina", "South Dakota", "Tennessee",
+    "Texas", "Utah", "Vermont", "Virginia", "Washington",
+    "West Virginia", "Wisconsin", "Wyoming",
+]
+
+
+# ---------------------------------------------------------
+# Appearance
+# ---------------------------------------------------------
+
+APP_CSS = """
 <style>
 .stApp {
-    background: #ffffff;
+    background: #f7faf9;
     color: #182230;
-}
-
-[data-testid="stHeader"] {
-    background: #ffffff !important;
+    font-family: Arial, sans-serif;
 }
 
 .block-container {
-    max-width: 1150px;
-    padding-top: 6rem !important;
+    max-width: 1200px;
+    padding-top: 5.5rem;
     padding-bottom: 3rem;
 }
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
     color: #182230 !important;
+    font-family: Arial, sans-serif !important;
 }
 
-[data-testid="stMarkdownContainer"] p,
-[data-testid="stWidgetLabel"] p {
+[data-testid="stWidgetLabel"] p,
+[data-testid="stMarkdownContainer"] p {
     color: #182230;
     line-height: 1.65;
 }
@@ -516,550 +223,296 @@ h1, h2, h3 {
     color: #526174 !important;
 }
 
-/* Fixed brand */
-.brand {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    box-sizing: border-box;
-    z-index: 999999;
-    background: #ffffff;
-    color: #096b65;
-    padding: 20px 240px 20px 24px;
-    border-bottom: 1px solid #e3e9ed;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    box-shadow: 0 2px 8px rgba(24, 34, 48, 0.04);
-}
-
-/* AI selector */
-.st-key-provider_header {
-    position: fixed;
-    top: 12px;
-    right: 24px;
-    z-index: 1000000;
-    width: auto;
-    background: #ffffff;
-    padding: 4px 10px;
-    border-radius: 10px;
-}
-
-.st-key-provider_header [data-testid="stRadio"] > div {
-    gap: 14px;
-}
-
-.st-key-provider_header label p {
-    color: #182230 !important;
-    font-size: 14px !important;
-    font-weight: 600;
-}
-
-/* Notes button */
-.st-key-notes_header {
-    position: fixed;
-    top: 70px;
-    right: 24px;
-    z-index: 999998;
-    width: auto;
-}
-
-.st-key-notes_header button {
-    background: #096b65 !important;
-    color: #ffffff !important;
-    border: 1px solid #096b65 !important;
-    border-radius: 10px !important;
-}
-
-.st-key-notes_header button p {
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
-    font-weight: 700 !important;
-}
-
-/* Main heading */
-.hero {
-    text-align: center;
-    padding: 30px 12px;
-}
-
-.eyebrow {
-    color: #096b65;
-    font-size: 13px;
-    letter-spacing: 2px;
-    font-weight: 700;
-}
-
-.hero h1 {
-    font-family: "Segoe UI", Arial, sans-serif !important;
-    font-size: clamp(30px, 4.5vw, 52px);
-    line-height: 1.14;
-    max-width: 850px;
-    margin: 14px auto;
-    font-weight: 800;
-    letter-spacing: -1px;
-    animation: headline-float 4s ease-in-out infinite;
-}
-
-.hero h1 .highlight {
-    color: #096b65;
-}
-
-.hero h1 .briefcase {
-    display: inline-block;
-    animation: briefcase-float 3s ease-in-out infinite;
-}
-
-.hero p {
-    color: #526174;
-    font-size: 18px;
-}
-
-@keyframes headline-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-}
-
-@keyframes briefcase-float {
-    0%, 100% { transform: translateY(0) rotate(-4deg); }
-    50% { transform: translateY(-6px) rotate(4deg); }
-}
-
-/* Motivation cards */
-.motivation-strip {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 8px auto 24px;
-}
-
-.motivation-card {
-    color: #123e38 !important;
-    background: #e5f4ee !important;
-    border: 1px solid #a6d2c2 !important;
-    border-radius: 14px;
-    padding: 10px 15px;
-    font-family: "Segoe UI", Arial, sans-serif !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.2px;
-    animation: gentle-float 4s ease-in-out infinite alternate;
-}
-
-.motivation-card:nth-child(2n) {
-    animation-delay: -2s;
-}
-
-@keyframes gentle-float {
-    from { transform: translateY(0); }
-    to { transform: translateY(-7px); }
-}
-
-.journey {
-    background: #f1f8f6;
-    border: 1px solid #d9eae5;
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 24px;
-    text-align: center;
-    color: #23483f;
-    font-size: 16px;
-    line-height: 1.8;
-}
-
-/* Input fields */
 [data-testid="stTextInput"] input,
 [data-testid="stTextArea"] textarea {
     background: #ffffff !important;
     color: #182230 !important;
     -webkit-text-fill-color: #182230 !important;
     font-size: 16px !important;
-    border: 1px solid #aebbc7 !important;
-    border-radius: 8px;
 }
 
-input::placeholder,
-textarea::placeholder {
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder {
     color: #667085 !important;
     -webkit-text-fill-color: #667085 !important;
     opacity: 1;
 }
 
-/* Resume upload */
+[data-baseweb="input"],
+[data-baseweb="base-input"],
+[data-baseweb="textarea"],
+[data-baseweb="select"] > div {
+    background: #ffffff !important;
+    color: #182230 !important;
+}
+
 [data-testid="stFileUploaderDropzone"] {
-    background: #f7faf9;
-    color: #182230;
-    border: 1px dashed #8aaba2;
-    border-radius: 12px;
+    background: #edf6f2 !important;
+    border: 2px dashed #80aaa0 !important;
+    border-radius: 14px;
 }
 
-[data-testid="stFileUploader"] button {
+[data-testid="stFileUploaderDropzone"] p,
+[data-testid="stFileUploaderDropzone"] small {
+    color: #253f38 !important;
+}
+
+[data-testid="stFileUploaderDropzone"] button {
     background: #096b65 !important;
-    color: #ffffff !important;
     border: 1px solid #096b65 !important;
-    border-radius: 10px !important;
-    min-height: 48px;
-    padding: 12px 24px !important;
 }
 
-[data-testid="stFileUploader"] button *,
-[data-testid="stFileUploader"] button p,
-[data-testid="stFileUploader"] button svg {
+[data-testid="stFileUploaderDropzone"] button,
+[data-testid="stFileUploaderDropzone"] button p {
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
 }
 
-[data-testid="stFileUploader"] button:hover {
-    background: #07534e !important;
-}
-
-[data-testid="stFileUploader"] button:focus-visible {
-    outline: 3px solid #80cbc4 !important;
-    outline-offset: 3px;
-}
-
-/* Primary and secondary buttons */
-.stButton button[kind="primary"] {
-    background: #096b65;
-    border: none;
+button[kind="primary"] {
+    background: #096b65 !important;
+    border: none !important;
     border-radius: 10px;
-    min-height: 48px;
+    min-height: 46px;
 }
 
-.stButton button[kind="primary"] p {
+button[kind="primary"] p {
     color: #ffffff !important;
     font-weight: 700;
 }
 
-.stButton button[kind="primary"]:hover {
-    background: #07534e;
+button[kind="primary"]:disabled {
+    background: #dce6e2 !important;
 }
 
-.stButton button[kind="primary"]:disabled {
-    background: #e4e7ec;
-    opacity: 1;
-}
-
-.stButton button[kind="primary"]:disabled p {
+button[kind="primary"]:disabled p {
     color: #526174 !important;
 }
 
-div.stButton > button[kind="secondary"] {
-    background: #ffffff !important;
-    color: #182230 !important;
-    border: 2px solid #096b65 !important;
-    border-radius: 10px !important;
-    min-height: 48px;
-}
-
-div.stButton > button[kind="secondary"] p {
-    color: #182230 !important;
-    -webkit-text-fill-color: #182230 !important;
-    font-size: 16px !important;
-    font-weight: 700 !important;
-}
-
-div.stButton > button[kind="secondary"]:hover {
-    background: #e5f4f0 !important;
-}
-
-[data-testid="stLinkButton"] a,
-[data-testid="stDownloadButton"] button {
-    background: #ffffff;
-    color: #182230;
-    border: 1px solid #bac8d0;
-    border-radius: 8px;
-}
-
-[data-testid="stLinkButton"] a p,
-[data-testid="stDownloadButton"] button p {
-    color: #182230 !important;
-}
-
-[data-testid="stMetricValue"] {
+.brand {
     color: #096b65;
-}
-
-/* Expandable sections */
-[data-testid="stExpander"] {
-    background: #ffffff !important;
-    border: 1px solid #b8c9c3 !important;
-    border-radius: 12px !important;
-}
-
-[data-testid="stExpander"] summary {
-    background: #e8f4ef !important;
-    color: #182230 !important;
-    border-radius: 10px !important;
-}
-
-[data-testid="stExpander"] summary p,
-[data-testid="stExpander"] summary span,
-[data-testid="stExpander"] summary svg {
-    color: #182230 !important;
-    -webkit-text-fill-color: #182230 !important;
-}
-
-[data-testid="stExpander"] summary:hover {
-    background: #d9ede5 !important;
-}
-
-/* Notes popup */
-[data-testid="stPopoverBody"] {
-    background: #ffffff !important;
-    color: #182230 !important;
-    border: 1px solid #b8c9c3 !important;
-    border-radius: 12px !important;
-}
-
-[data-testid="stPopoverBody"] p,
-[data-testid="stPopoverBody"] label,
-[data-testid="stPopoverBody"] span {
-    color: #182230 !important;
-    -webkit-text-fill-color: #182230 !important;
-}
-
-[data-testid="stPopoverBody"] textarea {
-    background: #ffffff !important;
-    color: #182230 !important;
-    -webkit-text-fill-color: #182230 !important;
-}
-
-/* Job platform buttons */
-.job-platform {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    min-height: 56px;
-    padding: 10px 14px;
-    border-radius: 12px;
-    color: #ffffff !important;
-    text-decoration: none !important;
-    font-family: "Segoe UI", Arial, sans-serif;
     font-size: 15px;
-    font-weight: 700;
-    box-shadow: 0 3px 8px rgba(24, 34, 48, 0.12);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.job-platform:hover {
-    color: #ffffff !important;
-    transform: translateY(-3px);
-    box-shadow: 0 6px 14px rgba(24, 34, 48, 0.2);
-}
-
-.job-platform:focus-visible {
-    outline: 3px solid #182230;
-    outline-offset: 3px;
-}
-
-.job-platform-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    flex-shrink: 0;
-    border-radius: 7px;
-    background: #ffffff;
-    font-size: 13px;
     font-weight: 800;
+    letter-spacing: 1.5px;
+    margin-bottom: 20px;
 }
 
-.job-linkedin { background: #0a66c2; }
-.job-indeed { background: #164081; }
-.job-dice { background: #ad2029; }
-.job-glassdoor { background: #087a50; }
-.job-ziprecruiter { background: #426b10; }
+.hero {
+    text-align: center;
+    padding: 30px 18px 18px;
+}
 
-.job-linkedin .job-platform-icon { color: #0a66c2; }
-.job-indeed .job-platform-icon { color: #164081; }
-.job-dice .job-platform-icon { color: #ad2029; }
-.job-glassdoor .job-platform-icon { color: #087a50; }
-.job-ziprecruiter .job-platform-icon { color: #426b10; }
+.hero h1 {
+    font-size: clamp(28px, 4vw, 46px);
+    line-height: 1.2;
+    margin-bottom: 12px;
+}
 
-/* Learning topic badge */
-.learning-topic {
-    display: inline-block;
-    padding: 5px 11px;
-    border-radius: 20px;
-    background: #e5f4ee;
-    color: #096b65;
+.hero p {
+    color: #526174 !important;
+    font-size: 17px;
+}
+
+.quote-track {
+    display: flex;
+    gap: 14px;
+    width: max-content;
+    animation: quoteFloat 45s linear infinite;
+}
+
+.quote-window {
+    overflow: hidden;
+    padding: 14px 0 28px;
+    margin-bottom: 18px;
+}
+
+.quote-card {
+    background: #173f37;
+    color: #ffffff;
+    font-family: Georgia, serif;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 15px 22px;
+    border-radius: 14px;
+    box-shadow: 0 5px 12px rgba(23, 63, 55, .1);
+    white-space: nowrap;
+}
+
+.quote-card:nth-child(3n+2) {
+    background: #334766;
+}
+
+.quote-card:nth-child(3n) {
+    background: #684b32;
+}
+
+.quote-window:hover .quote-track {
+    animation-play-state: paused;
+}
+
+@keyframes quoteFloat {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quote-track {
+        animation: none;
+        width: auto;
+        flex-wrap: wrap;
+    }
+    .quote-card {
+        white-space: normal;
+    }
+}
+
+.st-key-provider_header {
+    position: fixed;
+    top: 58px;
+    right: 24px;
+    width: 390px;
+    max-width: calc(100vw - 32px);
+    z-index: 900;
+    background: #ffffff;
+    border: 1px solid #dce5e2;
+    border-radius: 14px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 16px rgba(24, 34, 48, .08);
+}
+
+.st-key-provider_header [data-testid="stHorizontalBlock"] {
+    align-items: center;
+    gap: 8px;
+}
+
+.st-key-provider_header button {
+    min-height: 36px;
+    padding: 6px 10px;
+    background: #ffffff !important;
+    border: 1px solid #cbded8 !important;
+    border-radius: 9px;
+}
+
+.st-key-provider_header button p {
+    color: #096b65 !important;
     font-size: 13px;
+    font-weight: 600;
+}
+
+.provider-name {
+    color: #096b65;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 0;
+}
+
+.st-key-notes_header {
+    position: fixed;
+    top: 122px;
+    right: 24px;
+    width: 150px;
+    z-index: 890;
+}
+
+.job-link {
+    display: block;
+    padding: 12px 10px;
+    border-radius: 11px;
+    text-align: center;
+    text-decoration: none !important;
+    color: white !important;
     font-weight: 700;
     margin-bottom: 10px;
 }
 
-@media (max-width: 600px) {
-    .brand {
-        padding: 18px 175px 18px 14px !important;
-        font-size: 11px !important;
-        letter-spacing: 0.4px !important;
-    }
-
-    .st-key-provider_header {
-        top: 10px;
-        right: 8px;
-        padding: 4px;
-    }
-
-    .st-key-provider_header [data-testid="stRadio"] > div {
-        gap: 6px;
-    }
-
-    .st-key-provider_header label p {
-        font-size: 12px !important;
-    }
-
-    .st-key-notes_header {
-        top: 75px;
-        right: 10px;
-    }
-
-    .hero { padding-top: 16px; }
-    .journey { font-size: 14px; }
+.job-link:hover {
+    filter: brightness(.92);
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .motivation-card,
-    .hero h1,
-    .hero h1 .briefcase {
-        animation: none;
+.job-mark {
+    display: inline-block;
+    background: rgba(255,255,255,.18);
+    border-radius: 5px;
+    padding: 1px 5px;
+    margin-right: 5px;
+}
+
+@media (max-width: 700px) {
+    .block-container {
+        padding-top: 2rem;
     }
 
-    .job-platform {
-        transition: none;
-    }
-
-    .job-platform:hover {
-        transform: none;
+    .st-key-provider_header,
+    .st-key-notes_header {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        max-width: 100%;
+        margin-bottom: 12px;
     }
 }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+"""
 
+
+# ---------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------
 
 def show_items(items, empty_message="No items identified."):
     if not items:
         st.caption(empty_message)
+        return
 
     for item in items:
         st.write(f"• {item}")
 
 
-def learning_widget_key(topic, key_prefix):
-    return f"{key_prefix}_website_{topic}"
+def show_learning_resource(topic, key_prefix):
+    resource = LEARNING_RESOURCES[topic]
 
-
-def matched_learning_resources(skill_gaps):
-    """Match review feedback to topics in the fixed learning catalog."""
-    matches = []
-
-    for topic, resource in LEARNING_RESOURCES.items():
-        matching_gaps = [
-            gap
-            for gap in skill_gaps
-            if re.search(
-                resource["pattern"],
-                gap,
-                re.IGNORECASE,
-            )
-        ]
-
-        if matching_gaps:
-            matches.append((topic, resource, matching_gaps))
-
-    return matches
-
-
-def selected_learning_website(topic, resource, key_prefix):
-    websites = resource["websites"]
-
-    selected = st.session_state.get(
-        learning_widget_key(topic, key_prefix)
-    )
-
-    if selected not in websites:
-        selected = next(iter(websites))
-
-    return selected, websites[selected]
-
-
-def show_learning_resource(
-    topic,
-    resource,
-    matching_gaps=None,
-    key_prefix="library",
-):
-    st.markdown(
-        f'<div class="learning-topic">{escape(topic)}</div>',
-        unsafe_allow_html=True,
-    )
-
-    if matching_gaps:
-        st.write("**Why this was suggested**")
-        show_items(matching_gaps)
-
-    st.write("**What to study**")
+    st.write(f"**{topic}**")
     st.write(resource["focus"])
 
-    websites = resource["websites"]
-
-    chosen_website = st.selectbox(
+    website = st.selectbox(
         "Choose a learning website",
-        options=list(websites),
-        key=learning_widget_key(topic, key_prefix),
+        options=list(resource["websites"]),
+        key=f"{key_prefix}_website_{topic}",
     )
 
     st.link_button(
-        f"Open {chosen_website} ↗",
-        websites[chosen_website],
+        f"Visit {website}",
+        resource["websites"][website],
         use_container_width=True,
     )
 
-    st.write("**Practice project idea**")
+    st.write("**Practice project**")
     st.write(resource["project"])
 
-    st.caption(
-        "After completing the work, add your actual contribution, "
-        "tools, and results to your resume, then analyze it again."
-    )
 
+def show_role_learning(role, index):
+    gaps = role.get("skill_gaps", [])
+    search_text = " ".join(str(item) for item in gaps)
 
-def show_role_learning(role, role_index):
+    topics = [
+        topic
+        for topic, resource in LEARNING_RESOURCES.items()
+        if re.search(resource["pattern"], search_text, re.IGNORECASE)
+    ]
+
     with st.expander("Learn missing skills"):
-        st.caption(
-            "These suggestions relate to evidence not demonstrated clearly "
-            "in your resume. You may already know the skill."
+        if not topics:
+            st.caption(
+                "Choose a topic to explore learning resources."
+            )
+            topics = list(LEARNING_RESOURCES)
+
+        topic = st.selectbox(
+            "Choose a skill",
+            topics,
+            key=f"role_{index}_learning_topic",
         )
 
-        matches = matched_learning_resources(
-            role.get("skill_gaps", [])
-        )
-
-        if not matches:
-            st.write(
-                "No matching topic was found in the current learning "
-                "library. Use Browse learning resources below to "
-                "choose a topic."
-            )
-            return
-
-        for index, (topic, resource, gaps) in enumerate(matches):
-            if index:
-                st.divider()
-
-            show_learning_resource(
-                topic,
-                resource,
-                matching_gaps=gaps,
-                key_prefix=f"role_{role_index}",
-            )
+        show_learning_resource(topic, f"role_{index}")
 
 
 def job_links(role, location, job_type):
@@ -1068,17 +521,15 @@ def job_links(role, location, job_type):
         "Full-time": " full time",
         "Internship": " internship",
         "Contract": " contract",
-    }[job_type]
+    }.get(job_type, "")
 
-    query = role + suffix
+    query = f"{role}{suffix}".strip()
+    combined = f"{query} {location}".strip()
 
     return {
         "LinkedIn": (
             "https://www.linkedin.com/jobs/search/?"
-            + urlencode({
-                "keywords": query,
-                "location": location,
-            })
+            + urlencode({"keywords": query, "location": location})
         ),
         "Indeed": (
             "https://www.indeed.com/jobs?"
@@ -1090,181 +541,236 @@ def job_links(role, location, job_type):
         ),
         "Glassdoor": (
             "https://www.glassdoor.com/Job/jobs.htm?"
-            + urlencode({
-                "sc.keyword": " ".join(
-                    filter(None, [query, location])
-                )
-            })
+            + urlencode({"sc.keyword": combined})
         ),
         "ZipRecruiter": (
             "https://www.ziprecruiter.com/jobs-search?"
-            + urlencode({
-                "search": query,
-                "location": location,
-            })
+            + urlencode({"search": query, "location": location})
         ),
     }
 
 
 def show_job_buttons(links):
-    for names in [
-        ["LinkedIn", "Indeed", "Dice"],
-        ["Glassdoor", "ZipRecruiter"],
-    ]:
-        columns = st.columns(len(names))
+    styles = {
+        "LinkedIn": ("in", "#0a66c2"),
+        "Indeed": ("i", "#253b80"),
+        "Dice": ("D", "#b82025"),
+        "Glassdoor": ("G", "#087f5b"),
+        "ZipRecruiter": ("Z", "#344f30"),
+    }
 
-        for column, name in zip(columns, names):
-            css_class, icon = PLATFORM_STYLES[name]
+    columns = st.columns(3)
 
-            with column:
-                st.markdown(
-                    f'<a class="job-platform {css_class}" '
-                    f'href="{escape(links[name], quote=True)}" '
-                    f'target="_blank" rel="noopener noreferrer">'
-                    f'<span class="job-platform-icon">{icon}</span>'
-                    f'<span>Search {name}</span>'
-                    f'</a>',
-                    unsafe_allow_html=True,
-                )
+    for index, (name, url) in enumerate(links.items()):
+        mark, color = styles[name]
+
+        with columns[index % 3]:
+            st.markdown(
+                f"""
+<a class="job-link"
+   href="{escape(url, quote=True)}"
+   target="_blank"
+   rel="noopener noreferrer"
+   style="background:{color}">
+<span class="job-mark">{mark}</span>{escape(name)}
+</a>
+""",
+                unsafe_allow_html=True,
+            )
 
 
 def make_report(result, notes=""):
-    score = result["ats_score"]
-
-    score_text = (
-        f"{score}/100"
-        if score is not None
-        else "Not assessed"
-    )
-
     lines = [
         BRAND,
         "RESUME REVIEW",
         "",
-        result["summary"],
+        result.get("summary", ""),
         "",
-        "ESTIMATED ATS READINESS — TEXT ONLY",
-        f"Score: {score_text}",
-        f"Rating: {result['ats_label']}",
-        "App-defined estimate; not an employer's ATS score.",
+        "ESTIMATED ATS READINESS",
+        (
+            f"{result.get('ats_score')}/100 — "
+            f"{result.get('ats_label', '')}"
+            if result.get("ats_score") is not None
+            else "Not scored"
+        ),
+        "App estimate based on extracted text; not an employer ATS score.",
         "",
     ]
 
-    for item in result["score_categories"]:
+    for category in result.get("score_categories", []):
         lines.extend([
-            f"{item['name']}: {item['rating']}/5",
-            f"Evidence: {item['evidence']}",
-            f"Improve: {item['improvement']}",
+            f"{category.get('name', '')}: "
+            f"{category.get('rating', '')}/5",
+            f"Evidence: {category.get('evidence', '')}",
+            f"Improve: {category.get('improvement', '')}",
             "",
         ])
 
-    lines.append("PRIORITY IMPROVEMENTS")
+    lines.append("STRENGTHS")
+    lines.extend(f"- {item}" for item in result.get("strengths", []))
 
-    for item in result["top_improvements"]:
+    lines.extend(["", "PRIORITY IMPROVEMENTS"])
+
+    for item in result.get("top_improvements", []):
         lines.extend([
-            item["issue"],
-            f"Evidence: {item['resume_evidence']}",
-            f"Action: {item['suggested_action']}",
+            item.get("issue", ""),
+            f"Evidence: {item.get('resume_evidence', '')}",
+            f"Action: {item.get('suggested_action', '')}",
             "",
         ])
 
-    for title, field in [
-        ("STRENGTHS", "strengths"),
-        ("READABILITY", "readability_notes"),
+    lines.extend(["READABILITY AND COMPLETENESS"])
+    lines.extend(
+        f"- {item}" for item in result.get("readability_notes", [])
+    )
+
+    lines.extend(["", "BULLET SUGGESTIONS"])
+
+    for item in result.get("bullet_suggestions", []):
+        lines.extend([
+            f"Original: {item.get('original', '')}",
+            f"Suggested: {item.get('improved', '')}",
+            f"Clarification: {item.get('clarification_needed', '')}",
+            "",
+        ])
+
+    lines.append("RECOMMENDED ROLES")
+
+    for role in result.get("recommended_roles", []):
+        lines.extend([
+            f"{role.get('role', '')} — {role.get('fit', '')}",
+            role.get("reason", ""),
+            "Evidence:",
+            *[
+                f"- {item}"
+                for item in role.get("resume_evidence", [])
+            ],
+            "Skills to strengthen or demonstrate:",
+            *[f"- {item}" for item in role.get("skill_gaps", [])],
+            "",
+        ])
+
+    match = result.get("job_match", {})
+    lines.extend(["JOB DESCRIPTION COMPARISON", match.get("summary", "")])
+
+    for field, label in [
+        ("matching_requirements", "Matching requirements"),
+        ("requirements_not_shown", "Requirements not shown"),
+        ("suggested_changes", "Suggested changes"),
     ]:
-        lines.append(title)
-        lines.extend(f"- {item}" for item in result[field])
-        lines.append("")
+        lines.append(label)
+        lines.extend(f"- {item}" for item in match.get(field, []))
 
-    lines.append("BULLET SUGGESTIONS")
-
-    for item in result["bullet_suggestions"]:
-        lines.extend([
-            f"Original: {item['original']}",
-            f"Suggested: {item['improved']}",
-            f"Clarification: {item['clarification_needed'] or 'None'}",
-            "",
-        ])
-
-    lines.append("ROLES TO EXPLORE")
-
-    for role_index, role in enumerate(result["recommended_roles"]):
-        lines.extend([
-            f"{role['role']} — {role['fit']}",
-            role["reason"],
-            "Evidence: " + "; ".join(role["resume_evidence"]),
-            "Skills to strengthen or demonstrate: "
-            + "; ".join(role["skill_gaps"]),
-            "",
-        ])
-
-        matches = matched_learning_resources(role["skill_gaps"])
-
-        if matches:
-            lines.append("LEARN AND BUILD")
-
-        for topic, resource, gaps in matches:
-            website_name, website_url = selected_learning_website(
-                topic,
-                resource,
-                key_prefix=f"role_{role_index}",
-            )
-
-            lines.extend([
-                f"Topic: {topic}",
-                "Related feedback: " + "; ".join(gaps),
-                f"Study: {resource['focus']}",
-                f"Selected website: {website_name}",
-                f"Link: {website_url}",
-                f"Practice idea: {resource['project']}",
-                "",
-            ])
-
-    match = result["job_match"]
-
-    lines.extend([
-        "JOB COMPARISON",
-        match["summary"],
-    ])
-
-    for title, field in [
-        ("Matches", "matching_requirements"),
-        ("Not shown", "requirements_not_shown"),
-        ("Suggested changes", "suggested_changes"),
-    ]:
-        lines.append(title)
-        lines.extend(f"- {item}" for item in match[field])
-        lines.append("")
-
-    lines.extend([
-        "Review AI suggestions for accuracy before using them.",
-        "Visual formatting and actual ATS behavior were not assessed.",
-        "Learning topics are matched to review text using a fixed catalog.",
-        "Practice ideas are suggestions, not completed achievements.",
-    ])
-
-    if notes.strip():
-        lines.extend([
-            "",
-            "MY NOTES",
-            notes.strip(),
-        ])
+    lines.extend(["", "MY NOTES", notes or "No notes added."])
 
     return "\n".join(lines)
 
 
-def display_results(result, location, job_type, job_description):
+def sample_result():
+    return {
+        "is_resume": True,
+        "summary": (
+            "SAMPLE PREVIEW: This fictional candidate has introductory "
+            "Python, SQL, and dashboard experience. The suggestions below "
+            "demonstrate the app and are not an analysis of your resume."
+        ),
+        "ats_score": 70,
+        "ats_label": "Average",
+        "score_categories": [
+            {
+                "name": "Section completeness",
+                "rating": 4,
+                "evidence": "Education, skills, and a project are included.",
+                "improvement": "Add contact details and relevant experience.",
+            },
+            {
+                "name": "Skills clarity",
+                "rating": 4,
+                "evidence": "Python, SQL, and Excel are named.",
+                "improvement": "Connect each skill to a specific task.",
+            },
+            {
+                "name": "Experience and project evidence",
+                "rating": 3,
+                "evidence": "A dashboard project is described briefly.",
+                "improvement": "Explain the dataset and analysis performed.",
+            },
+            {
+                "name": "Bullet clarity",
+                "rating": 3,
+                "evidence": "The project description identifies an output.",
+                "improvement": "Describe the steps and supported findings.",
+            },
+        ],
+        "strengths": [
+            "Names relevant technical tools.",
+            "Includes a practical project.",
+        ],
+        "top_improvements": [
+            {
+                "issue": "Add detail to the dashboard project.",
+                "resume_evidence": "Built a dashboard using Python and CSV data.",
+                "suggested_action": (
+                    "Describe the data cleaning, charts, and questions answered."
+                ),
+            },
+        ],
+        "readability_notes": [
+            "Use clear section headings and consistent bullet wording.",
+        ],
+        "recommended_roles": [
+            {
+                "role": "Junior Data Analyst",
+                "fit": "Work toward",
+                "reason": (
+                    "Python, SQL, and dashboard work support exploring "
+                    "entry-level analytical roles."
+                ),
+                "resume_evidence": [
+                    "Python and SQL are listed.",
+                    "A dashboard project is included.",
+                ],
+                "skill_gaps": [
+                    "More SQL query examples are not shown.",
+                    "Data cleaning methods are not described.",
+                ],
+            },
+        ],
+        "bullet_suggestions": [
+            {
+                "original": "Built a dashboard using Python and CSV data.",
+                "improved": "Developed a Python dashboard to display CSV data.",
+                "clarification_needed": (
+                    "What questions did the dashboard help answer?"
+                ),
+            },
+        ],
+        "job_match": {
+            "summary": "This sample does not compare your job description.",
+            "matching_requirements": [],
+            "requirements_not_shown": [],
+            "suggested_changes": [],
+        },
+        "is_sample": True,
+    }
+
+
+def display_results(result, location, job_type):
     st.divider()
     st.header("Your resume. Your next steps.")
-    st.write(result["summary"])
 
-    if not result["is_resume"]:
+    if result.get("is_sample"):
+        st.info("Sample preview — fictional demonstration results.")
+
+    st.write(result.get("summary", ""))
+
+    if not result.get("is_resume", False):
         st.warning(
-            "Add a more complete resume to receive a score "
-            "and role suggestions."
+            "Add a more complete resume for supported scores "
+            "and role recommendations."
         )
 
-    score_tab, improve_tab, apply_tab, match_tab = st.tabs([
+    score_tab, improve_tab, jobs_tab, match_tab = st.tabs([
         "Readiness Score",
         "Improve My Resume",
         "Find Jobs",
@@ -1272,106 +778,86 @@ def display_results(result, location, job_type, job_description):
     ])
 
     with score_tab:
-        score = result["ats_score"]
+        score = result.get("ats_score")
 
         if score is None:
-            st.info(
-                "Not enough resume evidence to assign a score."
-            )
-
+            st.info("Not enough resume evidence to assign a score.")
         else:
-            score_col, explanation_col = st.columns([1, 2])
+            score_column, explanation_column = st.columns([1, 2])
 
-            with score_col:
-                st.metric(
-                    "Estimated ATS Readiness",
-                    f"{score}/100",
-                )
+            with score_column:
+                st.metric("Estimated ATS Readiness", f"{score}/100")
+                st.write(f"**{result.get('ats_label', '')}**")
+                st.progress(max(0.0, min(float(score) / 100, 1.0)))
 
-                st.write(f"**{result['ats_label']}**")
-
-                st.progress(
-                    max(0.0, min(float(score) / 100, 1.0))
-                )
-
-            with explanation_col:
+            with explanation_column:
                 st.write(
-                    "Your score reflects resume completeness, skills clarity, "
+                    "The score reflects section completeness, skills clarity, "
                     "experience and project evidence, and bullet clarity."
                 )
+                st.caption(
+                    "This is the app's text-based estimate, not an employer's "
+                    "ATS score. It does not assess visual layout or predict "
+                    "hiring outcomes."
+                )
 
-                with st.expander("About this score"):
-                    st.caption(
-                        "This is our app's text-based estimate, not an "
-                        "employer's ATS score. Visual layout is not assessed. "
-                        "AI ratings can vary between runs."
-                    )
+            with st.expander("Score labels"):
+                st.table({
+                    "Score": ["0–69", "70–84", "85–90", "91–100"],
+                    "Label": [
+                        "Needs major improvement",
+                        "Average",
+                        "Good",
+                        "Strong",
+                    ],
+                })
 
-                    st.write(
-                        "Four categories are rated 0–5. "
-                        "Each contributes up to 25 points."
-                    )
-
-                    st.table({
-                        "Score": [
-                            "0–69",
-                            "70–84",
-                            "85–90",
-                            "91–100",
-                        ],
-                        "Label": [
-                            "Needs major improvement",
-                            "Average",
-                            "Good",
-                            "Strong",
-                        ],
-                    })
-
-            for item in result["score_categories"]:
+            for item in result.get("score_categories", []):
                 with st.container(border=True):
                     st.write(
-                        f"**{item['name']} · {item['rating']}/5**"
+                        f"**{item.get('name', '')} · "
+                        f"{item.get('rating', '')}/5**"
                     )
-                    st.write(item["evidence"])
+                    st.write(item.get("evidence", ""))
                     st.write("**How to improve**")
-                    st.write(item["improvement"])
+                    st.write(item.get("improvement", ""))
 
     with improve_tab:
         st.subheader("Your priority improvements")
 
-        for index, item in enumerate(
-            result["top_improvements"],
-            start=1,
-        ):
+        improvements = result.get("top_improvements", [])
+
+        if not improvements:
+            st.caption("No supported improvements were generated.")
+
+        for index, item in enumerate(improvements, start=1):
             with st.container(border=True):
-                st.write(f"**{index}. {item['issue']}**")
-                st.write(item["suggested_action"])
-
+                st.write(f"**{index}. {item.get('issue', '')}**")
+                st.write(item.get("suggested_action", ""))
                 with st.expander("Evidence from your resume"):
-                    st.write(item["resume_evidence"])
+                    st.write(item.get("resume_evidence", ""))
 
-        st.subheader("What’s working well")
-        show_items(result["strengths"])
+        st.subheader("What's working well")
+        show_items(result.get("strengths", []))
 
         with st.expander("Readability and completeness"):
-            show_items(result["readability_notes"])
+            show_items(result.get("readability_notes", []))
 
         st.subheader("Make your bullet points clearer")
 
-        if not result["bullet_suggestions"]:
-            st.caption(
-                "Not enough detail was available for bullet rewrites."
-            )
+        bullets = result.get("bullet_suggestions", [])
 
-        for item in result["bullet_suggestions"]:
+        if not bullets:
+            st.caption("Not enough evidence was available for rewrites.")
+
+        for item in bullets:
             with st.container(border=True):
                 st.write("**Original**")
-                st.write(item["original"])
-
+                st.write(item.get("original", ""))
                 st.write("**Suggested wording**")
-                st.write(item["improved"])
+                st.write(item.get("improved", ""))
 
-                if item["clarification_needed"]:
+                if item.get("clarification_needed"):
                     st.info(item["clarification_needed"])
 
         with st.expander("Check the extracted resume text"):
@@ -1380,88 +866,73 @@ def display_results(result, location, job_type, job_description):
                 value=st.session_state.get("review_text", ""),
                 height=250,
                 disabled=True,
+                key="extracted_resume_preview",
             )
 
-    with apply_tab:
+    with jobs_tab:
         st.subheader("Explore roles that fit your experience")
         st.caption(
-            "Review your next steps, build skills, and search for openings."
+            "Buttons open job searches. Confirm requirements and filters "
+            "on the selected platform before applying."
         )
 
-        with st.expander("Search tips"):
-            st.write(
-                "Change location or job type above without generating "
-                "the review again. These buttons open keyword searches; "
-                "confirm filters and requirements on each platform."
-            )
+        roles = result.get("recommended_roles", [])
 
-        for role_index, role in enumerate(
-            result["recommended_roles"]
-        ):
+        if not roles:
+            st.info("No supported role recommendations were generated.")
+
+        for index, role in enumerate(roles):
             with st.container(border=True):
-                st.subheader(role["role"])
-                st.caption(role["fit"])
-                st.write(role["reason"])
+                st.subheader(role.get("role", "Suggested role"))
+                st.caption(role.get("fit", ""))
+                st.write(role.get("reason", ""))
 
                 with st.expander("Evidence and next steps"):
-                    st.write("**Evidence from your resume**")
-                    show_items(role["resume_evidence"])
+                    st.write("**Evidence from your background**")
+                    show_items(role.get("resume_evidence", []))
 
-                    st.write(
-                        "**Skills or experience to strengthen "
-                        "or demonstrate**"
-                    )
-
+                    st.write("**Skills to strengthen or demonstrate**")
                     show_items(
-                        role["skill_gaps"],
-                        "No specific gaps identified; review each listing.",
+                        role.get("skill_gaps", []),
+                        "No specific gaps identified. Review each listing.",
+                    )
+                    st.caption(
+                        "Missing evidence does not prove you lack a skill."
                     )
 
-                show_role_learning(role, role_index)
+                show_role_learning(role, index)
 
                 st.write("**Find openings**")
-
-                links = job_links(
-                    role["role"],
-                    location.strip(),
-                    job_type,
+                show_job_buttons(
+                    job_links(
+                        role.get("role", ""),
+                        location,
+                        job_type,
+                    )
                 )
 
-                show_job_buttons(links)
-
-        if not result["recommended_roles"]:
-            st.info(
-                "No supported role recommendations were generated."
-            )
-
-        st.caption(
-            "Applications are completed on the selected platform."
-        )
+        st.caption("Applications are completed on the selected website.")
 
     with match_tab:
-        match = result["job_match"]
-
+        match = result.get("job_match", {})
         st.subheader("Compare with your target job")
-        st.write(match["summary"])
+        st.write(match.get("summary", ""))
 
-        if job_description.strip():
-            st.write("**Matching requirements**")
-            show_items(match["matching_requirements"])
-
-            st.write(
-                "**Requirements not shown in the resume**"
-            )
-
-            st.caption(
-                "Missing evidence does not prove you lack the skill."
-            )
-
-            show_items(match["requirements_not_shown"])
-
-            st.write("**Suggested changes**")
-            show_items(match["suggested_changes"])
+        for field, label in [
+            ("matching_requirements", "Matching requirements"),
+            ("requirements_not_shown", "Requirements not shown"),
+            ("suggested_changes", "Suggested changes"),
+        ]:
+            if match.get(field):
+                st.write(f"**{label}**")
+                show_items(match[field])
 
     st.divider()
+
+    elapsed = result.get("elapsed_seconds")
+
+    if isinstance(elapsed, (int, float)):
+        st.caption(f"Generated in {elapsed:.1f} seconds.")
 
     st.download_button(
         "Download My Review",
@@ -1475,247 +946,171 @@ def display_results(result, location, job_type, job_description):
     )
 
 
-def sample_result():
-    return {
-        "is_resume": True,
-        "summary": (
-            "SAMPLE PREVIEW: This example shows how a resume review, "
-            "role suggestions, and learning resources will appear."
-        ),
-        "ats_score": 70,
-        "ats_label": "Average",
-        "score_categories": [
-            {
-                "name": "Section completeness",
-                "rating": 3,
-                "evidence": (
-                    "The sample includes education, skills, and a project."
-                ),
-                "improvement": (
-                    "Add contact information and more project details."
-                ),
-            },
-            {
-                "name": "Skills clarity",
-                "rating": 4,
-                "evidence": (
-                    "Python, SQL, and Excel are listed clearly."
-                ),
-                "improvement": (
-                    "Explain how these skills were used in a project."
-                ),
-            },
-            {
-                "name": "Experience and project evidence",
-                "rating": 3,
-                "evidence": (
-                    "The sample mentions building a Python dashboard."
-                ),
-                "improvement": (
-                    "Describe what the dashboard analyzed and your role."
-                ),
-            },
-            {
-                "name": "Bullet clarity",
-                "rating": 4,
-                "evidence": (
-                    "The project description identifies an action and tools."
-                ),
-                "improvement": (
-                    "Add the purpose of the dashboard if known."
-                ),
-            },
-        ],
-        "strengths": [
-            "Lists relevant data skills: Python, SQL, and Excel.",
-            "Includes a hands-on dashboard project.",
-        ],
-        "top_improvements": [
-            {
-                "issue": "Describe the dashboard in more detail",
-                "resume_evidence": (
-                    "Built a dashboard using Python and CSV data."
-                ),
-                "suggested_action": (
-                    "Explain what the dashboard displayed and how you "
-                    "prepared the data. Add outcomes only if they are true."
-                ),
-            },
-            {
-                "issue": "Add contact information",
-                "resume_evidence": (
-                    "No contact details are shown in the sample."
-                ),
-                "suggested_action": (
-                    "Add a professional email and a LinkedIn or "
-                    "portfolio link if available."
-                ),
-            },
-        ],
-        "readability_notes": [
-            "Use clear section headings such as Education, Skills, and Projects."
-        ],
-        "recommended_roles": [
-            {
-                "role": "Junior Data Analyst",
-                "fit": "Target now",
-                "reason": (
-                    "Python, SQL, Excel, and the dashboard project "
-                    "provide a starting point for entry-level roles."
-                ),
-                "resume_evidence": [
-                    "Python, SQL, and Excel",
-                    "Dashboard project using CSV data",
-                ],
-                "skill_gaps": [
-                    "Add more detail about data cleaning and analysis.",
-                    "Demonstrate SQL joins in a completed project.",
-                ],
-            },
-            {
-                "role": "Data Scientist",
-                "fit": "Work toward",
-                "reason": (
-                    "The sample shows a computing and data foundation. "
-                    "More evidence of statistics and machine learning "
-                    "would help."
-                ),
-                "resume_evidence": [
-                    "Computer Science education",
-                    "Python project",
-                ],
-                "skill_gaps": [
-                    "Build a project that demonstrates model evaluation.",
-                    "Show applied statistics experience.",
-                ],
-            },
-        ],
-        "bullet_suggestions": [
-            {
-                "original": (
-                    "Built a dashboard using Python and CSV data."
-                ),
-                "improved": (
-                    "Built a dashboard using Python to display "
-                    "information from CSV data."
-                ),
-                "clarification_needed": (
-                    "What information did the dashboard show?"
-                ),
-            }
-        ],
-        "job_match": {
-            "summary": (
-                "Sample preview: paste a job description "
-                "for an actual comparison."
-            ),
-            "matching_requirements": [],
-            "requirements_not_shown": [],
-            "suggested_changes": [],
-        },
-    }
+# ---------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------
 
-
-# Show the analyzer only after sign-in or guest access.
 require_login()
-show_profile()
 
+# Apply main-page styling only after authentication.
+st.markdown(APP_CSS, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------
+# Compact account controls
+# ---------------------------------------------------------
+
+allow_ollama = (
+    os.getenv("ENABLE_OLLAMA", "false").strip().lower() == "true"
+)
+
+provider_options = (
+    ["Gemini", "Ollama"] if allow_ollama else ["Gemini"]
+)
+
+if st.session_state.get("selected_provider") not in provider_options:
+    st.session_state["selected_provider"] = "Gemini"
+
+with st.container(key="provider_header"):
+    provider_column, profile_column, logout_column = st.columns(
+        [1.05, 1.35, 1.1]
+    )
+
+    with provider_column:
+        if allow_ollama:
+            provider = st.radio(
+                "AI provider",
+                provider_options,
+                horizontal=True,
+                label_visibility="collapsed",
+                key="selected_provider",
+            )
+        else:
+            provider = "Gemini"
+            st.markdown(
+                '<div class="provider-name">Gemini</div>',
+                unsafe_allow_html=True,
+            )
+
+    with profile_column:
+        if st.button(
+            "My Profile",
+            key="header_my_profile",
+            use_container_width=True,
+        ):
+            show_profile()
+
+    with logout_column:
+        account = st.session_state.get("auth_account", {})
+        label = (
+            "Sign in"
+            if account.get("mode") == "guest"
+            else "Sign out"
+        )
+
+        if st.button(
+            label,
+            key="header_sign_out",
+            use_container_width=True,
+        ):
+            sign_out()
+
+ollama_model = "qwen2.5:3b"
+
+
+# ---------------------------------------------------------
+# Notes
+# ---------------------------------------------------------
+
+with st.container(key="notes_header"):
+    with st.popover("📝 My Notes"):
+        st.text_area(
+            "Write your notes",
+            placeholder="Reminders, ideas, or your next steps...",
+            height=180,
+            key="personal_review_notes",
+        )
+
+        st.download_button(
+            "Download notes",
+            data=st.session_state.get("personal_review_notes", ""),
+            file_name="My_Career_Notes.txt",
+            mime="text/plain",
+            key="download_notes",
+            use_container_width=True,
+        )
+
+        st.caption("Notes are also included in your review download.")
+
+
+# ---------------------------------------------------------
+# Main heading and motivation
+# ---------------------------------------------------------
 
 st.markdown(
     f'<div class="brand">{BRAND}</div>',
     unsafe_allow_html=True,
 )
 
-# Ollama is disabled unless explicitly enabled for local development.
-allow_ollama = (
-    os.getenv("ENABLE_OLLAMA", "false").strip().lower()
-    == "true"
-)
-
-provider_options = (
-    ["Gemini", "Ollama"]
-    if allow_ollama
-    else ["Gemini"]
-)
-
-# Clear an older Ollama selection when it is unavailable.
-if st.session_state.get("selected_provider") not in provider_options:
-    st.session_state["selected_provider"] = "Gemini"
-
-with st.container(key="provider_header"):
-    if allow_ollama:
-        provider = st.radio(
-            "AI provider",
-            provider_options,
-            horizontal=True,
-            label_visibility="collapsed",
-            key="selected_provider",
-        )
-    else:
-        provider = "Gemini"
-        st.markdown("**Gemini**")
-
-ollama_model = "qwen2.5:3b"
-
-
-with st.container(key="notes_header"):
-    with st.popover("📝 My Notes"):
-        st.text_area(
-            "Write your notes",
-            placeholder=(
-                "Write reminders, ideas, or next steps here..."
-            ),
-            height=160,
-            key="personal_review_notes",
-        )
-
-        st.caption(
-            "Your notes will be included when you download your review."
-        )
-
-
 st.markdown(
     """
 <div class="hero">
-<div class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</div>
-<h1>GOOD RESUME FINDS <span class="highlight">GREAT ROLES</span> <span class="briefcase">💼</span></h1>
-<p>Build a stronger resume and explore your next opportunity.</p>
+    <h1>GOOD RESUME FINDS GREAT ROLES</h1>
+    <p>
+        Understand your experience. Build your skills.
+        Take your next step with confidence.
+    </p>
 </div>
-<div class="motivation-strip" aria-label="Motivation">
-<div class="motivation-card">It's still day one</div>
-<div class="motivation-card">Every search counts</div>
-<div class="motivation-card">Never give up</div>
-<div class="motivation-card">Your search matters</div>
-<div class="motivation-card">Your life and skills are valuable</div>
-<div class="motivation-card">Every rejection can lead to a better opportunity</div>
-<div class="motivation-card">Success isn't always an easy journey</div>
-</div>
-<div class="journey">
-<strong>01 · Review</strong> &nbsp; / &nbsp;
-<strong>02 · Learn</strong> &nbsp; / &nbsp;
-<strong>03 · Build</strong> &nbsp; / &nbsp;
-<strong>04 · Apply</strong>
+""",
+    unsafe_allow_html=True,
+)
+
+quotes = [
+    "It's still day one",
+    "Every search counts",
+    "Never give up",
+    "Your search matters",
+    "Your life and skills are valuable",
+    "Every rejection can lead to a better opportunity",
+    "Success isn't always an easy journey",
+]
+
+quote_cards = "".join(
+    f'<div class="quote-card">{escape(quote)}</div>'
+    for quote in quotes
+)
+
+st.markdown(
+    f"""
+<div class="quote-window">
+    <div class="quote-track">
+        {quote_cards}
+        <div style="display:contents" aria-hidden="true">
+            {quote_cards}
+        </div>
+    </div>
 </div>
 """,
     unsafe_allow_html=True,
 )
 
 
-left, right = st.columns([1.1, 1], gap="large")
+# ---------------------------------------------------------
+# Resume and goals
+# ---------------------------------------------------------
 
+left, right = st.columns([1.1, 1], gap="large")
 
 with left:
     with st.container(border=True):
         st.subheader("Start with your resume")
-
-        st.caption(
-            "Upload a PDF or Word document, or paste the text."
-        )
+        st.caption("Upload a document or paste your resume text.")
 
         method = st.radio(
             "Resume source",
             ["Upload file", "Paste text"],
             horizontal=True,
+            key="resume_source",
         )
 
         uploaded_file = None
@@ -1725,35 +1120,31 @@ with left:
             uploaded_file = st.file_uploader(
                 "Choose your resume",
                 type=["pdf", "docx"],
+                key="resume_upload",
             )
-
-            st.caption(
-                "Accepted files: text-based PDF or DOCX · Maximum 10 MB"
-            )
-
+            st.caption("Text-based PDF or DOCX · Maximum 10 MB")
         else:
             resume_text = st.text_area(
                 "Paste your resume",
                 height=260,
-                placeholder=(
-                    "Education, skills, experience, projects..."
-                ),
+                placeholder="Education, skills, experience, projects...",
+                key="resume_pasted_text",
             )
 
-    with st.expander("Tell us more about your background"):
+    with st.expander("Add projects and courses"):
         additional_projects = st.text_area(
             "Completed projects",
             placeholder=(
                 "Describe projects not included in your resume. "
                 "What did you build, and which tools did you use?"
             ),
+            key="additional_projects",
         )
 
         additional_courses = st.text_area(
             "Relevant courses",
-            placeholder=(
-                "List your courses and any related hands-on work."
-            ),
+            placeholder="List courses and related hands-on work.",
+            key="additional_courses",
         )
 
 with right:
@@ -1767,149 +1158,48 @@ with right:
             key="goal_target_role",
         )
 
-        state_options = [
-            "Any location",
-            "Remote",
-            "Alabama",
-            "Alaska",
-            "Arizona",
-            "Arkansas",
-            "California",
-            "Colorado",
-            "Connecticut",
-            "Delaware",
-            "District of Columbia",
-            "Florida",
-            "Georgia",
-            "Hawaii",
-            "Idaho",
-            "Illinois",
-            "Indiana",
-            "Iowa",
-            "Kansas",
-            "Kentucky",
-            "Louisiana",
-            "Maine",
-            "Maryland",
-            "Massachusetts",
-            "Michigan",
-            "Minnesota",
-            "Mississippi",
-            "Missouri",
-            "Montana",
-            "Nebraska",
-            "Nevada",
-            "New Hampshire",
-            "New Jersey",
-            "New Mexico",
-            "New York",
-            "North Carolina",
-            "North Dakota",
-            "Ohio",
-            "Oklahoma",
-            "Oregon",
-            "Pennsylvania",
-            "Rhode Island",
-            "South Carolina",
-            "South Dakota",
-            "Tennessee",
-            "Texas",
-            "Utah",
-            "Vermont",
-            "Virginia",
-            "Washington",
-            "West Virginia",
-            "Wisconsin",
-            "Wyoming",
-        ]
-
         selected_state = st.selectbox(
             "Preferred state",
-            options=state_options,
-            index=0,
+            US_STATES,
             key="goal_state",
         )
 
         city = ""
 
-        if selected_state not in (
-            "Any location",
-            "Remote",
-        ):
+        if selected_state not in ("Any location", "Remote"):
             city = st.text_input(
                 "Preferred city",
                 placeholder="Optional—for example: Oklahoma City",
                 key="goal_city",
             ).strip()
 
-        # Keep the existing location variable used by job searches.
         if selected_state == "Any location":
             location = ""
-
         elif selected_state == "Remote":
             location = "Remote"
-
         elif city:
-            location = (
-                f"{city}, {selected_state}, United States"
-            )
-
+            location = f"{city}, {selected_state}, United States"
         else:
-            location = (
-                f"{selected_state}, United States"
-            )
+            location = f"{selected_state}, United States"
 
         job_type = st.selectbox(
             "Job type",
-            options=[
-                "All types",
-                "Full-time",
-                "Internship",
-                "Contract",
-            ],
-            index=0,
+            ["All types", "Full-time", "Internship", "Contract"],
             key="goal_job_type",
         )
 
         job_description = st.text_area(
             "Job description",
-            height=120,
-            placeholder=(
-                "Paste a job description "
-                "to compare requirements."
-            ),
-            key="goal_job_description",
-        )
-        job_type = st.selectbox(
-            "Job type",
-            [
-                "All types",
-                "Full-time",
-                "Internship",
-                "Contract",
-            ],
-            index=0,
-            key="goal_job_type",
-        )
-
-        job_description = st.text_area(
-            "Job description",
-            value="",
-            height=120,
-            placeholder=(
-                "Paste a job description to compare requirements."
-            ),
+            height=150,
+            placeholder="Paste a job description for a focused comparison.",
             key="goal_job_description",
         )
 
-        job_description = st.text_area(
-            "Job description",
-            height=120,
-            placeholder=(
-                "Paste a job description to compare requirements."
-            ),
-        )
 
+# ---------------------------------------------------------
+# Keep results aligned with the analyzed inputs
+# Location and job type can change without a new AI request.
+# ---------------------------------------------------------
 
 file_digest = (
     hashlib.sha256(uploaded_file.getvalue()).hexdigest()
@@ -1917,54 +1207,61 @@ file_digest = (
     else None
 )
 
-input_signature = (
-    method,
-    file_digest,
-    resume_text,
-    target_role,
-    job_description,
-    additional_projects,
-    additional_courses,
-)
+signature_data = {
+    "method": method,
+    "file": file_digest,
+    "resume": resume_text,
+    "target_role": target_role,
+    "job_description": job_description,
+    "projects": additional_projects,
+    "courses": additional_courses,
+    "provider": provider,
+    "model": ollama_model if provider == "Ollama" else os.getenv(
+        "GEMINI_MODEL", ""
+    ),
+    "review_version": 5,
+}
 
-review_version = 4
+input_signature = hashlib.sha256(
+    json.dumps(signature_data, sort_keys=True).encode("utf-8")
+).hexdigest()
 
-if (
-    st.session_state.get("review_signature") != input_signature
-    or st.session_state.get("review_version") != review_version
-):
+if st.session_state.get("review_signature") != input_signature:
     st.session_state.pop("review_result", None)
     st.session_state.pop("review_text", None)
 
-    # Clear learning selections belonging to the previous review.
     for state_key in list(st.session_state):
-        if state_key.startswith("role_") and "_website_" in state_key:
+        if state_key.startswith("role_"):
             del st.session_state[state_key]
 
     st.session_state["review_signature"] = input_signature
-    st.session_state["review_version"] = review_version
 
 
-has_resume = (
-    uploaded_file is not None
-    or bool(resume_text.strip())
-)
-
+# ---------------------------------------------------------
+# Analysis
+# ---------------------------------------------------------
 
 with st.expander("Privacy details"):
     if provider == "Gemini":
         st.caption(
-            "Your resume, optional job details, projects, and courses "
-            "are sent to Google Gemini for analysis."
+            "Your resume, optional job description, projects, and courses "
+            "are sent to Google Gemini when you click Analyze My Resume."
         )
     else:
         st.caption(
-            "Your resume, optional job details, projects, and courses "
-            "are processed by Ollama on the computer running this app."
+            "Your resume and optional background details are processed "
+            "by Ollama on the computer running this app."
         )
 
+    st.caption(
+        "Saved profiles are stored separately in Firebase. "
+        "This page does not automatically include your saved profile "
+        "in an AI request."
+    )
 
-clicked = st.button(
+has_resume = uploaded_file is not None or bool(resume_text.strip())
+
+analyze_clicked = st.button(
     "Analyze My Resume",
     type="primary",
     use_container_width=True,
@@ -1976,7 +1273,6 @@ preview_clicked = st.button(
     use_container_width=True,
 )
 
-
 if preview_clicked:
     st.session_state["review_text"] = (
         "Sample Candidate\n"
@@ -1984,22 +1280,15 @@ if preview_clicked:
         "Skills: Python, SQL, Excel\n"
         "Project: Built a dashboard using Python and CSV data."
     )
-
     st.session_state["review_result"] = sample_result()
 
-
-if clicked:
+if analyze_clicked:
     st.session_state.pop("review_result", None)
     st.session_state.pop("review_text", None)
 
     try:
-        if (
-            uploaded_file is not None
-            and uploaded_file.size > 10 * 1024 * 1024
-        ):
-            raise ValueError(
-                "Please upload a resume smaller than 10 MB."
-            )
+        if uploaded_file is not None and uploaded_file.size > 10 * 1024 * 1024:
+            raise ValueError("Please upload a resume smaller than 10 MB.")
 
         with st.spinner("Reading your resume..."):
             text = (
@@ -2008,12 +1297,15 @@ if clicked:
                 else resume_text.strip()
             )
 
-        if not text or not text.strip():
+        if not isinstance(text, str) or not text.strip():
             raise ValueError(
-                "Please upload a readable resume or paste its text."
+                "No readable text was found. Try a text-based PDF, "
+                "a DOCX document, or paste your resume."
             )
 
         st.session_state["review_text"] = text
+
+        started = perf_counter()
 
         with st.spinner("Preparing your resume review..."):
             analysis = analyze_resume(
@@ -2026,9 +1318,11 @@ if clicked:
                 additional_courses=additional_courses.strip(),
             )
 
+        elapsed = perf_counter() - started
+
         required_fields = {
-            "summary",
             "is_resume",
+            "summary",
             "ats_score",
             "ats_label",
             "score_categories",
@@ -2045,9 +1339,12 @@ if clicked:
             or not required_fields.issubset(analysis)
         ):
             raise ValueError(
-                "The analyzer returned an older result format. "
-                "Save the latest ai_analyzer.py and restart Streamlit."
+                "The analyzer returned an unexpected result format. "
+                "Check that ai_analyzer.py is the latest version."
             )
+
+        analysis["elapsed_seconds"] = elapsed
+        analysis["is_sample"] = False
 
         st.session_state["review_result"] = analysis
 
@@ -2058,41 +1355,32 @@ if clicked:
 result = st.session_state.get("review_result")
 
 if result:
-    display_results(
-        result,
-        location,
-        job_type,
-        job_description,
-    )
+    display_results(result, location, job_type)
 
+
+# ---------------------------------------------------------
+# Learning library
+# ---------------------------------------------------------
 
 st.divider()
 
-
 with st.expander("Browse learning resources"):
     st.write(
-        "Choose a topic, select your preferred learning website, "
+        "Choose a topic, select your preferred website, "
         "and explore a practice project."
     )
 
     topic = st.selectbox(
         "What would you like to learn?",
-        options=list(LEARNING_RESOURCES),
+        list(LEARNING_RESOURCES),
         key="learning_library_topic",
     )
 
-    show_learning_resource(
-        topic,
-        LEARNING_RESOURCES[topic],
-        key_prefix="library",
-    )
+    show_learning_resource(topic, "library")
 
     st.caption(
-        "Some websites also offer paid certificates or labs. "
-        "Check the selected resource before enrolling."
+        "Availability and pricing vary by website. "
+        "Some resources include paid certificates or labs."
     )
 
-
-st.caption(
-    f"{BRAND} · Built for students and career changers"
-)
+st.caption(f"{BRAND} · Built for students and career changers")

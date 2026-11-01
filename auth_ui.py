@@ -919,6 +919,11 @@ def _show_reset_password():
         st.session_state["auth_show_reset"] = False
         st.rerun()
 
+def sign_out():
+    """Clear this user's session and return to sign in."""
+    _clear_session()
+    st.rerun()
+
 
 def require_login():
     """Show authentication until signed in or browsing as guest."""
@@ -929,9 +934,9 @@ def require_login():
         account
         and account.get("mode") != "guest"
         and (
-            account.get("auth_flow_version")
-            != AUTH_FLOW_VERSION
+            account.get("auth_flow_version") != AUTH_FLOW_VERSION
             or account.get("email_verified") is not True
+            or not account.get("id_token")
         )
     ):
         _clear_session()
@@ -940,38 +945,11 @@ def require_login():
     if account:
         expires_at = account.get("expires_at")
 
-        if (
-            expires_at is not None
-            and time.time() >= expires_at
-        ):
+        if expires_at is not None and time.time() >= expires_at:
             _clear_session()
             expired = True
-
         else:
-            with st.sidebar:
-                st.subheader("Your account")
-
-                if account["mode"] == "guest":
-                    st.write("Browsing as a guest")
-                    button_label = "Back to sign in"
-                else:
-                    st.write(account["email"])
-                    button_label = "Sign out"
-
-                st.caption(
-                    "Reviews and notes are kept in this "
-                    "session only. Download anything "
-                    "you want to keep."
-                )
-
-                if st.button(
-                    button_label,
-                    key="account_sign_out",
-                    use_container_width=True,
-                ):
-                    _clear_session()
-                    st.rerun()
-
+            # Account buttons are now displayed in the main header.
             return
 
     _show_background()
@@ -993,24 +971,17 @@ Take your next step with confidence.
         )
 
         if expired:
-            st.info(
-                "Your session expired. Please sign in again."
-            )
+            st.info("Your session expired. Please sign in again.")
 
         notice = st.session_state.pop("auth_notice", None)
 
         if notice:
             st.success(notice)
 
-        if st.session_state.get(
-            "pending_email_verification"
-        ):
+        if st.session_state.get("pending_email_verification"):
             _show_email_verification()
 
-        elif st.session_state.get(
-            "auth_show_reset",
-            False,
-        ):
+        elif st.session_state.get("auth_show_reset", False):
             _show_reset_password()
 
         else:
@@ -1032,16 +1003,14 @@ Take your next step with confidence.
             use_container_width=True,
         ):
             _clear_session()
-
             st.session_state["auth_account"] = {
                 "mode": "guest",
             }
-
             st.rerun()
 
         st.caption(
-            "Reviews and notes are available during "
-            "this session. Account history is not enabled yet."
+            "Resume reviews and notes stay in this session. "
+            "Signed-in users can save their applicant profile."
         )
 
     st.stop()
