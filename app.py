@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 import streamlit as st
 
 from ai_analyzer import analyze_resume
-from auth_ui import require_login, sign_out
+from auth_ui import require_login
 from profile_ui import show_profile
 from resume_parser import extract_resume_text
 
@@ -23,9 +23,9 @@ st.set_page_config(
 )
 
 
-# ---------------------------------------------------------
-# Learning resources
-# ---------------------------------------------------------
+# =========================================================
+# LEARNING RESOURCES
+# =========================================================
 
 LEARNING_RESOURCES = {
     "Python": {
@@ -47,19 +47,18 @@ LEARNING_RESOURCES = {
             "SQLBolt": "https://sqlbolt.com/",
             "W3Schools": "https://www.w3schools.com/sql/",
             "Kaggle Learn": "https://www.kaggle.com/learn/intro-to-sql",
-            "PostgreSQL tutorial": "https://www.postgresql.org/docs/current/tutorial.html",
+            "PostgreSQL": "https://www.postgresql.org/docs/current/tutorial.html",
         },
     },
     "Data Analysis": {
         "pattern": r"data analy|pandas|excel|tableau|power bi",
-        "focus": "Cleaning data, exploring patterns, and explaining findings.",
+        "focus": "Clean data, explore patterns, and explain findings.",
         "project": "Clean a public dataset and create a dashboard with findings.",
         "websites": {
             "Kaggle Learn": "https://www.kaggle.com/learn",
             "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
-            "W3Schools": "https://www.w3schools.com/sql/",
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
-            "pandas documentation": "https://pandas.pydata.org/docs/getting_started/",
+            "pandas": "https://pandas.pydata.org/docs/getting_started/",
         },
     },
     "Machine Learning": {
@@ -67,15 +66,14 @@ LEARNING_RESOURCES = {
         "focus": "Train/test splits, baseline models, and evaluation.",
         "project": "Compare two classifiers and explain their evaluation results.",
         "websites": {
-            "Google ML courses": "https://developers.google.com/machine-learning",
+            "Google ML": "https://developers.google.com/machine-learning",
             "Kaggle Learn": "https://www.kaggle.com/learn/intro-to-machine-learning",
             "scikit-learn": "https://scikit-learn.org/stable/tutorial/index.html",
             "fast.ai": "https://course.fast.ai/",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Cybersecurity": {
-        "pattern": r"cyber|security|soc\b|siem|network defense",
+        "pattern": r"cyber|security|\bsoc\b|siem|network defense",
         "focus": "Networking, Linux, log analysis, and defensive security.",
         "project": "Analyze sample authentication logs and document suspicious events.",
         "websites": {
@@ -83,7 +81,6 @@ LEARNING_RESOURCES = {
             "TryHackMe": "https://tryhackme.com/",
             "Cisco Skills for All": "https://skillsforall.com/",
             "OverTheWire": "https://overthewire.org/wargames/",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Frontend Development": {
@@ -98,27 +95,28 @@ LEARNING_RESOURCES = {
         },
     },
     "Backend Development": {
-        "pattern": r"back.?end|rest|api\b|django|flask|fastapi|node",
+        "pattern": r"back.?end|\brest\b|\bapi\b|django|flask|fastapi|node",
         "focus": "APIs, validation, databases, authentication, and testing.",
         "project": "Build a task API with authenticated access and input validation.",
         "websites": {
             "FastAPI": "https://fastapi.tiangolo.com/tutorial/",
             "Django": "https://docs.djangoproject.com/en/stable/intro/",
-            "MDN": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side",
+            "MDN": (
+                "https://developer.mozilla.org/en-US/docs/"
+                "Learn_web_development/Extensions/Server-side"
+            ),
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Full Stack Development": {
         "pattern": r"full.?stack",
         "focus": "Connect a frontend, backend, and database.",
-        "project": "Build a job application tracker with accounts and saved applications.",
+        "project": "Build a job tracker with accounts and saved applications.",
         "websites": {
             "Full Stack Open": "https://fullstackopen.com/en/",
             "The Odin Project": "https://www.theodinproject.com/",
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
             "MDN": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Generative AI": {
@@ -130,31 +128,28 @@ LEARNING_RESOURCES = {
             "Google AI": "https://ai.google.dev/gemini-api/docs",
             "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
             "DeepLearning.AI": "https://www.deeplearning.ai/short-courses/",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "AWS": {
-        "pattern": r"\baws\b|amazon web|ec2|s3\b|lambda",
+        "pattern": r"\baws\b|amazon web|ec2|\bs3\b|lambda",
         "focus": "IAM, storage, compute, monitoring, and cost awareness.",
-        "project": "Design a small web app architecture and document IAM permissions.",
+        "project": "Design a web app architecture and document IAM permissions.",
         "websites": {
             "AWS Skill Builder": "https://skillbuilder.aws/",
             "AWS Workshops": "https://workshops.aws/",
             "AWS documentation": "https://docs.aws.amazon.com/",
             "freeCodeCamp": "https://www.freecodecamp.org/learn/",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Cloud Computing": {
         "pattern": r"\bcloud\b|azure|gcp|google cloud",
-        "focus": "Cloud services, networking, identity, deployment, and monitoring.",
-        "project": "Deploy a small app and document its architecture and operating costs.",
+        "focus": "Cloud services, networking, identity, and deployment.",
+        "project": "Deploy a small app and document its architecture and costs.",
         "websites": {
             "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
             "Google Cloud Skills Boost": "https://www.cloudskillsboost.google/",
             "AWS Skill Builder": "https://skillbuilder.aws/",
             "Google Cloud documentation": "https://cloud.google.com/docs",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "DevOps": {
@@ -166,23 +161,20 @@ LEARNING_RESOURCES = {
             "Kubernetes": "https://kubernetes.io/docs/tutorials/",
             "GitHub Actions": "https://docs.github.com/en/actions",
             "Microsoft Learn": "https://learn.microsoft.com/en-us/training/",
-            "W3Schools": "https://www.w3schools.com/sql/",
         },
     },
     "Git and GitHub": {
         "pattern": r"\bgit\b|\bgithub\b|version control",
         "focus": "Commits, branches, pull requests, and resolving conflicts.",
-        "project": "Publish a project with a README and complete a feature using a branch.",
+        "project": "Publish a project and complete a feature using a branch.",
         "websites": {
             "GitHub Skills": "https://skills.github.com/",
             "Git book": "https://git-scm.com/book/en/v2",
             "Learn Git Branching": "https://learngitbranching.js.org/",
-            "Atlassian Git tutorials": "https://www.atlassian.com/git/tutorials",
-            "W3Schools": "https://www.w3schools.com/sql/",
+            "Atlassian": "https://www.atlassian.com/git/tutorials",
         },
     },
 }
-
 
 US_STATES = [
     "Any location", "Remote",
@@ -200,27 +192,35 @@ US_STATES = [
 ]
 
 
-# ---------------------------------------------------------
-# Appearance
-# ---------------------------------------------------------
+# =========================================================
+# ONE CONSOLIDATED STYLESHEET
+# =========================================================
 
 APP_CSS = """
 <style>
 .stApp {
-    background: #f7faf9;
+    background:
+        radial-gradient(ellipse at 0% 0%, #edf7f2, transparent 42%),
+        radial-gradient(ellipse at 100% 10%, #eef3fb, transparent 42%),
+        #ffffff;
     color: #182230;
-    font-family: Arial, sans-serif;
+    font-family: "Segoe UI", Arial, sans-serif;
 }
 
 .block-container {
-    max-width: 1200px;
-    padding-top: 5.5rem;
+    max-width: 1150px;
+    padding-top: 9rem;
     padding-bottom: 3rem;
+}
+
+h1, h2, h3, h4,
+[data-testid="stWidgetLabel"],
+input, textarea, button {
+    font-family: "Segoe UI", Arial, sans-serif !important;
 }
 
 h1, h2, h3, h4 {
     color: #182230 !important;
-    font-family: Arial, sans-serif !important;
 }
 
 [data-testid="stWidgetLabel"] p,
@@ -231,6 +231,14 @@ h1, h2, h3, h4 {
 
 [data-testid="stCaptionContainer"] p {
     color: #526174 !important;
+}
+
+[data-baseweb="input"],
+[data-baseweb="base-input"],
+[data-baseweb="textarea"],
+[data-baseweb="select"] > div {
+    background: #ffffff !important;
+    color: #182230 !important;
 }
 
 [data-testid="stTextInput"] input,
@@ -248,18 +256,10 @@ h1, h2, h3, h4 {
     opacity: 1;
 }
 
-[data-baseweb="input"],
-[data-baseweb="base-input"],
-[data-baseweb="textarea"],
-[data-baseweb="select"] > div {
-    background: #ffffff !important;
-    color: #182230 !important;
-}
-
 [data-testid="stFileUploaderDropzone"] {
     background: #edf6f2 !important;
     border: 2px dashed #80aaa0 !important;
-    border-radius: 14px;
+    border-radius: 12px;
 }
 
 [data-testid="stFileUploaderDropzone"] p,
@@ -280,13 +280,13 @@ h1, h2, h3, h4 {
 button[kind="primary"] {
     background: #096b65 !important;
     border: none !important;
-    border-radius: 10px;
     min-height: 46px;
+    border-radius: 10px;
 }
 
 button[kind="primary"] p {
     color: #ffffff !important;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 button[kind="primary"]:disabled {
@@ -297,121 +297,73 @@ button[kind="primary"]:disabled p {
     color: #526174 !important;
 }
 
-.brand {
-    color: #096b65;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    margin-bottom: 20px;
-}
+/* Brand: small, fixed, transparent, and shown once. */
+.app-brand {
+    position: fixed;
+    top: 68px;
+    left: 28px;
+    z-index: 900;
 
-.hero {
-    text-align: center;
-    padding: 30px 18px 18px;
-}
-
-.hero h1 {
-    font-size: clamp(28px, 4vw, 46px);
-    line-height: 1.2;
-    margin-bottom: 12px;
-}
-
-.hero p {
-    color: #526174 !important;
-    font-size: 17px;
-}
-
-.quote-track {
     display: flex;
-    gap: 14px;
-    width: max-content;
-    animation: quoteFloat 45s linear infinite;
-}
+    align-items: center;
+    gap: 9px;
+    max-width: calc(100vw - 460px);
 
-.quote-window {
-    overflow: hidden;
-    padding: 14px 0 28px;
-    margin-bottom: 18px;
-}
-
-.quote-card {
-    background: #173f37;
-    color: #ffffff;
-    font-family: Georgia, serif;
-    font-size: 17px;
+    color: #096b65;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 12px;
     font-weight: 600;
-    padding: 15px 22px;
-    border-radius: 14px;
-    box-shadow: 0 5px 12px rgba(23, 63, 55, .1);
-    white-space: nowrap;
+    letter-spacing: .7px;
+
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
-.quote-card:nth-child(3n+2) {
-    background: #334766;
+.app-brand-icon {
+    font-size: 22px;
+    line-height: 1;
 }
 
-.quote-card:nth-child(3n) {
-    background: #684b32;
-}
-
-.quote-window:hover .quote-track {
-    animation-play-state: paused;
-}
-
-@keyframes quoteFloat {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .quote-track {
-        animation: none;
-        width: auto;
-        flex-wrap: wrap;
-    }
-    .quote-card {
-        white-space: normal;
-    }
-}
-
-.st-key-provider_header {
+/* Account buttons stay visible while scrolling. */
+.st-key-account_header {
     position: fixed;
     top: 58px;
     right: 24px;
+    z-index: 900;
     width: 390px;
     max-width: calc(100vw - 32px);
-    z-index: 900;
-    background: #ffffff;
-    border: 1px solid #dce5e2;
-    border-radius: 14px;
-    padding: 8px 12px;
-    box-shadow: 0 4px 16px rgba(24, 34, 48, .08);
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, .96);
+    border: 1px solid #e0e8e4;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(24, 34, 48, .05);
 }
 
-.st-key-provider_header [data-testid="stHorizontalBlock"] {
+.st-key-account_header [data-testid="stHorizontalBlock"] {
     align-items: center;
     gap: 8px;
 }
 
-.st-key-provider_header button {
-    min-height: 36px;
-    padding: 6px 10px;
+.st-key-account_header button {
+    min-height: 34px;
+    padding: 5px 8px;
+    border: 1px solid #d2e1da !important;
     background: #ffffff !important;
-    border: 1px solid #cbded8 !important;
-    border-radius: 9px;
+    border-radius: 8px;
 }
 
-.st-key-provider_header button p {
-    color: #096b65 !important;
+.st-key-account_header button p {
     font-size: 13px;
     font-weight: 600;
+    color: #096b65 !important;
 }
 
 .provider-name {
-    color: #096b65;
     font-size: 14px;
-    font-weight: 700;
-    padding: 6px 0;
+    font-weight: 600;
+    color: #096b65;
+    padding: 5px 0;
 }
 
 .st-key-notes_header {
@@ -422,35 +374,131 @@ button[kind="primary"]:disabled p {
     z-index: 890;
 }
 
+/* Open heading area: no surrounding card. */
+.app-intro {
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: 35px 80px 45px;
+    margin-bottom: 20px;
+}
+
+.app-intro h1.floating-headline {
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: clamp(40px, 4.8vw, 64px) !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.8px !important;
+    color: #183c34 !important;
+    margin: 0 0 24px;
+    padding: 0;
+    animation: headlineFloat 6s ease-in-out infinite;
+}
+
+.app-intro p {
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 20px !important;
+    font-weight: 400 !important;
+    line-height: 1.7 !important;
+    color: #52635e !important;
+    margin: 0;
+}
+
+/* Decorative resume papers remain outside the form. */
+.intro-paper {
+    position: absolute;
+    top: 25px;
+    width: 52px;
+    height: 72px;
+    padding: 11px;
+    box-sizing: border-box;
+    background: #ffffff;
+    border: 1px solid #c2dbcf;
+    border-radius: 7px;
+    box-shadow: 0 8px 18px rgba(23, 63, 55, .07);
+    pointer-events: none;
+    animation: paperFloat 7s ease-in-out infinite;
+}
+
+.intro-paper.left {
+    left: 8px;
+    rotate: -12deg;
+}
+
+.intro-paper.right {
+    right: 8px;
+    rotate: 12deg;
+    animation-delay: -3s;
+}
+
+.paper-avatar {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #a2cbbb;
+    margin-bottom: 9px;
+}
+
+.paper-line {
+    height: 3px;
+    border-radius: 3px;
+    background: #cbded5;
+    margin-top: 5px;
+}
+
+.paper-line.short {
+    width: 65%;
+}
+
+@keyframes paperFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
 .job-link {
     display: block;
-    padding: 12px 10px;
-    border-radius: 11px;
     text-align: center;
-    text-decoration: none !important;
-    color: white !important;
-    font-weight: 700;
+    padding: 11px 8px;
     margin-bottom: 10px;
+    border-radius: 10px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-weight: 600;
+    color: #ffffff !important;
+    text-decoration: none !important;
 }
 
 .job-link:hover {
     filter: brightness(.92);
 }
 
-.job-mark {
-    display: inline-block;
-    background: rgba(255,255,255,.18);
-    border-radius: 5px;
-    padding: 1px 5px;
-    margin-right: 5px;
+.job-link:focus-visible {
+    outline: 3px solid #182230;
+    outline-offset: 3px;
 }
 
-@media (max-width: 700px) {
+.job-mark {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, .18);
+}
+
+@media (max-width: 1000px) {
     .block-container {
         padding-top: 2rem;
     }
 
-    .st-key-provider_header,
+    .app-brand {
+        position: relative;
+        top: auto;
+        left: auto;
+        max-width: 100%;
+        margin-bottom: 16px;
+        font-size: 12px;
+    }
+
+    .st-key-account_header,
     .st-key-notes_header {
         position: relative;
         top: auto;
@@ -460,13 +508,138 @@ button[kind="primary"]:disabled p {
         margin-bottom: 12px;
     }
 }
+
+@media (max-width: 700px) {
+    .app-intro {
+        padding: 25px 5px 35px;
+    }
+
+    .app-intro h1 {
+        font-size: 28px !important;
+    }
+
+    .intro-paper {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .intro-paper {
+        animation: none;
+    }
+}
+/* App name at the top-left. */
+.app-brand {
+    position: fixed !important;
+    top: 0 !important;
+    left: 24px !important;
+    height: 58px !important;
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: calc(100vw - 600px) !important;
+    z-index: 1000000 !important;
+
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Account controls immediately before Streamlit's Deploy area. */
+.st-key-account_header {
+    position: fixed !important;
+    top: 4px !important;
+    right: 165px !important;
+    width: 360px !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 3px 8px !important;
+    z-index: 1000000 !important;
+
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.st-key-account_header [data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+}
+
+.st-key-account_header button {
+    min-height: 34px !important;
+}
+
+/* Notes remain just below the top bar. */
+.st-key-notes_header {
+    top: 72px !important;
+}
+
+/* Stack controls on smaller screens to avoid overlap. */
+@media (max-width: 1100px) {
+    .app-brand {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        height: auto !important;
+        max-width: 100% !important;
+        margin-bottom: 16px !important;
+    }
+
+    .st-key-account_header,
+    .st-key-notes_header {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 12px !important;
+    }
+}
+/* Move My Notes closer to the right edge. */
+.st-key-notes_header {
+    right: 10px !important;
+    width: 150px !important;
+    max-width: calc(100vw - 20px);
+}
+
+/* Green button with readable white text. */
+.st-key-notes_header [data-testid="stPopover"] > button {
+    background: #096b45 !important;
+    border: 1px solid #096b45 !important;
+    border-radius: 10px !important;
+    color: #ffffff !important;
+}
+
+.st-key-notes_header [data-testid="stPopover"] > button p,
+.st-key-notes_header [data-testid="stPopover"] > button svg {
+    color: #ffffff !important;
+}
+
+.st-key-notes_header [data-testid="stPopover"] > button:hover {
+    background: #075336 !important;
+    border-color: #075336 !important;
+}
+
+@media (max-width: 1100px) {
+    .st-key-notes_header {
+        right: auto !important;
+        margin-left: auto !important;
+    }
+}
 </style>
 """
 
+# =========================================================
+# HELPERS
+# =========================================================
 
-# ---------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------
+def logout():
+    for key in list(st.session_state):
+        del st.session_state[key]
+    st.rerun()
+
 
 def show_items(items, empty_message="No items identified."):
     if not items:
@@ -485,7 +658,7 @@ def show_learning_resource(topic, key_prefix):
 
     website = st.selectbox(
         "Choose a learning website",
-        options=list(resource["websites"]),
+        list(resource["websites"]),
         key=f"{key_prefix}_website_{topic}",
     )
 
@@ -500,26 +673,25 @@ def show_learning_resource(topic, key_prefix):
 
 
 def show_role_learning(role, index):
-    gaps = role.get("skill_gaps", [])
-    search_text = " ".join(str(item) for item in gaps)
+    gap_text = " ".join(
+        str(item) for item in role.get("skill_gaps", [])
+    )
 
     topics = [
         topic
         for topic, resource in LEARNING_RESOURCES.items()
-        if re.search(resource["pattern"], search_text, re.IGNORECASE)
+        if re.search(resource["pattern"], gap_text, re.IGNORECASE)
     ]
 
     with st.expander("Learn missing skills"):
         if not topics:
-            st.caption(
-                "Choose a topic to explore learning resources."
-            )
+            st.caption("Choose a topic to explore learning resources.")
             topics = list(LEARNING_RESOURCES)
 
         topic = st.selectbox(
             "Choose a skill",
             topics,
-            key=f"role_{index}_learning_topic",
+            key=f"role_{index}_topic",
         )
 
         show_learning_resource(topic, f"role_{index}")
@@ -534,7 +706,6 @@ def job_links(role, location, job_type):
     }.get(job_type, "")
 
     query = f"{role}{suffix}".strip()
-    combined = f"{query} {location}".strip()
 
     return {
         "LinkedIn": (
@@ -551,7 +722,7 @@ def job_links(role, location, job_type):
         ),
         "Glassdoor": (
             "https://www.glassdoor.com/Job/jobs.htm?"
-            + urlencode({"sc.keyword": combined})
+            + urlencode({"sc.keyword": f"{query} {location}".strip()})
         ),
         "ZipRecruiter": (
             "https://www.ziprecruiter.com/jobs-search?"
@@ -575,21 +746,19 @@ def show_job_buttons(links):
         mark, color = styles[name]
 
         with columns[index % 3]:
-            st.markdown(
-                f"""
-<a class="job-link"
-   href="{escape(url, quote=True)}"
-   target="_blank"
-   rel="noopener noreferrer"
-   style="background:{color}">
-<span class="job-mark">{mark}</span>{escape(name)}
-</a>
-""",
-                unsafe_allow_html=True,
+            st.html(
+                f'<a class="job-link" '
+                f'href="{escape(url, quote=True)}" '
+                f'target="_blank" rel="noopener noreferrer" '
+                f'style="background:{color}">'
+                f'<span class="job-mark">{mark}</span>'
+                f'{escape(name)}</a>'
             )
 
 
 def make_report(result, notes=""):
+    score = result.get("ats_score")
+
     lines = [
         BRAND,
         "RESUME REVIEW",
@@ -598,12 +767,11 @@ def make_report(result, notes=""):
         "",
         "ESTIMATED ATS READINESS",
         (
-            f"{result.get('ats_score')}/100 — "
-            f"{result.get('ats_label', '')}"
-            if result.get("ats_score") is not None
+            f"{score}/100 — {result.get('ats_label', '')}"
+            if score is not None
             else "Not scored"
         ),
-        "App estimate based on extracted text; not an employer ATS score.",
+        "App estimate based on text, not an employer ATS score.",
         "",
     ]
 
@@ -617,8 +785,7 @@ def make_report(result, notes=""):
         ])
 
     lines.append("STRENGTHS")
-    lines.extend(f"- {item}" for item in result.get("strengths", []))
-
+    lines.extend(f"- {x}" for x in result.get("strengths", []))
     lines.extend(["", "PRIORITY IMPROVEMENTS"])
 
     for item in result.get("top_improvements", []):
@@ -629,11 +796,10 @@ def make_report(result, notes=""):
             "",
         ])
 
-    lines.extend(["READABILITY AND COMPLETENESS"])
+    lines.append("READABILITY AND COMPLETENESS")
     lines.extend(
-        f"- {item}" for item in result.get("readability_notes", [])
+        f"- {x}" for x in result.get("readability_notes", [])
     )
-
     lines.extend(["", "BULLET SUGGESTIONS"])
 
     for item in result.get("bullet_suggestions", []):
@@ -651,17 +817,14 @@ def make_report(result, notes=""):
             f"{role.get('role', '')} — {role.get('fit', '')}",
             role.get("reason", ""),
             "Evidence:",
-            *[
-                f"- {item}"
-                for item in role.get("resume_evidence", [])
-            ],
+            *[f"- {x}" for x in role.get("resume_evidence", [])],
             "Skills to strengthen or demonstrate:",
-            *[f"- {item}" for item in role.get("skill_gaps", [])],
+            *[f"- {x}" for x in role.get("skill_gaps", [])],
             "",
         ])
 
     match = result.get("job_match", {})
-    lines.extend(["JOB DESCRIPTION COMPARISON", match.get("summary", "")])
+    lines.extend(["JOB MATCH", match.get("summary", "")])
 
     for field, label in [
         ("matching_requirements", "Matching requirements"),
@@ -669,20 +832,20 @@ def make_report(result, notes=""):
         ("suggested_changes", "Suggested changes"),
     ]:
         lines.append(label)
-        lines.extend(f"- {item}" for item in match.get(field, []))
+        lines.extend(f"- {x}" for x in match.get(field, []))
 
     lines.extend(["", "MY NOTES", notes or "No notes added."])
-
     return "\n".join(lines)
 
 
 def sample_result():
     return {
         "is_resume": True,
+        "is_sample": True,
         "summary": (
             "SAMPLE PREVIEW: This fictional candidate has introductory "
-            "Python, SQL, and dashboard experience. The suggestions below "
-            "demonstrate the app and are not an analysis of your resume."
+            "Python, SQL, and dashboard experience. These results "
+            "demonstrate the app and do not analyze your resume."
         ),
         "ats_score": 70,
         "ats_label": "Average",
@@ -723,10 +886,10 @@ def sample_result():
                 "suggested_action": (
                     "Describe the data cleaning, charts, and questions answered."
                 ),
-            },
+            }
         ],
         "readability_notes": [
-            "Use clear section headings and consistent bullet wording.",
+            "Use clear section headings and consistent bullet wording."
         ],
         "recommended_roles": [
             {
@@ -741,10 +904,10 @@ def sample_result():
                     "A dashboard project is included.",
                 ],
                 "skill_gaps": [
-                    "More SQL query examples are not shown.",
+                    "SQL query examples are not shown.",
                     "Data cleaning methods are not described.",
                 ],
-            },
+            }
         ],
         "bullet_suggestions": [
             {
@@ -753,7 +916,7 @@ def sample_result():
                 "clarification_needed": (
                     "What questions did the dashboard help answer?"
                 ),
-            },
+            }
         ],
         "job_match": {
             "summary": "This sample does not compare your job description.",
@@ -761,7 +924,6 @@ def sample_result():
             "requirements_not_shown": [],
             "suggested_changes": [],
         },
-        "is_sample": True,
     }
 
 
@@ -844,6 +1006,7 @@ def display_results(result, location, job_type):
             with st.container(border=True):
                 st.write(f"**{index}. {item.get('issue', '')}**")
                 st.write(item.get("suggested_action", ""))
+
                 with st.expander("Evidence from your resume"):
                     st.write(item.get("resume_evidence", ""))
 
@@ -854,7 +1017,6 @@ def display_results(result, location, job_type):
             show_items(result.get("readability_notes", []))
 
         st.subheader("Make your bullet points clearer")
-
         bullets = result.get("bullet_suggestions", [])
 
         if not bullets:
@@ -882,8 +1044,8 @@ def display_results(result, location, job_type):
     with jobs_tab:
         st.subheader("Explore roles that fit your experience")
         st.caption(
-            "Buttons open job searches. Confirm requirements and filters "
-            "on the selected platform before applying."
+            "These buttons open keyword searches. Confirm requirements "
+            "and filters on the selected platform."
         )
 
         roles = result.get("recommended_roles", [])
@@ -911,14 +1073,9 @@ def display_results(result, location, job_type):
                     )
 
                 show_role_learning(role, index)
-
                 st.write("**Find openings**")
                 show_job_buttons(
-                    job_links(
-                        role.get("role", ""),
-                        location,
-                        job_type,
-                    )
+                    job_links(role.get("role", ""), location, job_type)
                 )
 
         st.caption("Applications are completed on the selected website.")
@@ -940,7 +1097,6 @@ def display_results(result, location, job_type):
     st.divider()
 
     elapsed = result.get("elapsed_seconds")
-
     if isinstance(elapsed, (int, float)):
         st.caption(f"Generated in {elapsed:.1f} seconds.")
 
@@ -956,19 +1112,30 @@ def display_results(result, location, job_type):
     )
 
 
-# ---------------------------------------------------------
-# Authentication
-# ---------------------------------------------------------
+# =========================================================
+# AUTHENTICATION
+# =========================================================
 
 require_login()
 
-# Apply main-page styling only after authentication.
-st.markdown(APP_CSS, unsafe_allow_html=True)
+st.html(APP_CSS)
 
 
-# ---------------------------------------------------------
-# Compact account controls
-# ---------------------------------------------------------
+# =========================================================
+# BRAND — RENDERED ONCE
+# =========================================================
+
+st.html(
+    f'<div class="app-brand">'
+    f'<span>{escape(BRAND)}</span>'
+    f'<span class="app-brand-icon" aria-hidden="true">💼</span>'
+    f'</div>'
+)
+
+
+# =========================================================
+# ACCOUNT CONTROLS
+# =========================================================
 
 allow_ollama = (
     os.getenv("ENABLE_OLLAMA", "false").strip().lower() == "true"
@@ -981,7 +1148,7 @@ provider_options = (
 if st.session_state.get("selected_provider") not in provider_options:
     st.session_state["selected_provider"] = "Gemini"
 
-with st.container(key="provider_header"):
+with st.container(key="account_header"):
     provider_column, profile_column, logout_column = st.columns(
         [1.05, 1.35, 1.1]
     )
@@ -997,10 +1164,7 @@ with st.container(key="provider_header"):
             )
         else:
             provider = "Gemini"
-            st.markdown(
-                '<div class="provider-name">Gemini</div>',
-                unsafe_allow_html=True,
-            )
+            st.html('<div class="provider-name">Gemini</div>')
 
     with profile_column:
         if st.button(
@@ -1012,25 +1176,25 @@ with st.container(key="provider_header"):
 
     with logout_column:
         account = st.session_state.get("auth_account", {})
-        label = (
+        account_label = (
             "Sign in"
             if account.get("mode") == "guest"
             else "Sign out"
         )
 
         if st.button(
-            label,
+            account_label,
             key="header_sign_out",
             use_container_width=True,
         ):
-            sign_out()
+            logout()
 
 ollama_model = "qwen2.5:3b"
 
 
-# ---------------------------------------------------------
-# Notes
-# ---------------------------------------------------------
+# =========================================================
+# NOTES
+# =========================================================
 
 with st.container(key="notes_header"):
     with st.popover("📝 My Notes"):
@@ -1053,167 +1217,103 @@ with st.container(key="notes_header"):
         st.caption("Notes are also included in your review download.")
 
 
-# ---------------------------------------------------------
-# Main heading and motivation
-# ---------------------------------------------------------
+# =========================================================
+# MAIN HEADING — RENDERED ONCE
+# =========================================================
 
-st.markdown(
+paper = (
+    '<div class="paper-avatar"></div>'
+    '<div class="paper-line"></div>'
+    '<div class="paper-line"></div>'
+    '<div class="paper-line short"></div>'
+)
+st.html(
     """
 <style>
-.motivation-background {
-    position: fixed;
-    inset: 0;
-    overflow: hidden;
-    pointer-events: none;
-    z-index: 0;
+.app-intro {
+    text-align: center;
+    padding: 40px 12px 50px;
+    margin-bottom: 20px;
 }
 
-.motivation-background span {
-    position: absolute;
+.app-intro h1.floating-headline {
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif !important;
+    font-size: clamp(36px, 4.5vw, 56px) !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -1px !important;
+    color: #183c34 !important;
+    margin: 0 0 24px;
+    padding: 0;
+    animation: headlineFloat 6s ease-in-out infinite;
+}
+
+.floating-headline .headline-second-line {
     display: block;
-    max-width: 260px;
-    color: #54796f;
-    opacity: 0.22;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(16px, 1.5vw, 23px);
-    font-style: italic;
-    font-weight: 600;
-    line-height: 1.5;
-    background: none;
-    border: none;
-    box-shadow: none;
-    animation: backgroundDrift 16s ease-in-out infinite alternate;
+    color: #087f78;
+    margin-top: 8px;
 }
 
-.motivation-background span:nth-child(1) {
-    top: 17%;
-    left: 3%;
-    transform: rotate(-9deg);
+.floating-headline .headline-briefcase {
+    display: inline-block;
+    font-size: 0.75em;
+    margin-left: 8px;
 }
 
-.motivation-background span:nth-child(2) {
-    top: 34%;
-    right: 3%;
-    animation-delay: -4s;
+.app-intro h1.floating-headline {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
+    font-size: clamp(38px, 4.5vw, 58px) !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    letter-spacing: -1.2px !important;
+    color: #183c34 !important;
+    margin: 0 0 24px;
+    padding: 0;
+    animation: headlineFloat 6s ease-in-out infinite;
+}
+@keyframes headlineFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
 }
 
-.motivation-background span:nth-child(3) {
-    top: 57%;
-    left: 2%;
-    animation-delay: -8s;
-}
-
-.motivation-background span:nth-child(4) {
-    top: 76%;
-    right: 3%;
-    animation-delay: -6s;
-}
-
-.motivation-background span:nth-child(5) {
-    top: 85%;
-    left: 6%;
-    animation-delay: -10s;
-}
-
-.motivation-background span:nth-child(6) {
-    top: 10%;
-    right: 5%;
-    animation-delay: -12s;
-}
-
-.motivation-background span:nth-child(7) {
-    top: 48%;
-    right: 1%;
-    animation-delay: -2s;
-}
-
-/* Keep the page content above the decorative background. */
-.stApp [data-testid="stMainBlockContainer"] {
-    position: relative;
-    z-index: 1;
-}
-
-/* Give input sections a clean surface. */
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: #ffffff;
-}
-
-@keyframes backgroundDrift {
-    from {
-        translate: 0 0;
-    }
-    to {
-        translate: 10px -24px;
-    }
-}
-
-@media (max-width: 900px) {
-    .motivation-background span {
-        font-size: 16px;
-        opacity: 0.12;
-        max-width: 160px;
+@media (max-width: 700px) {
+    .app-intro h1.floating-headline {
+        font-size: 36px !important;
     }
 
-    .motivation-background span:nth-child(n+5) {
-        display: none;
+    .app-intro p {
+        font-size: 15px;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .motivation-background span {
+    .app-intro h1.floating-headline {
         animation: none;
     }
 }
 </style>
-""",
-    unsafe_allow_html=True,
-)
 
-quotes = [
-    "It's still day one",
-    "Every search counts",
-    "Never give up",
-    "Your search matters",
-    "Your life and skills are valuable",
-    "Every rejection can lead to a better opportunity",
-    "Success isn't always an easy journey",
-]
+<section class="app-intro">
+    <h1 class="floating-headline">
+        Good Resumes Find
+        <span class="headline-second-line">
+            Great Roles
+            <span class="headline-briefcase" aria-hidden="true">💼</span>
+        </span>
+    </h1>
 
-background_quotes = "".join(
-    f"<span>{escape(quote)}</span>"
-    for quote in quotes
-)
-
-st.markdown(
-    f"""
-<div class="motivation-background" aria-hidden="true">
-    {background_quotes}
-</div>
-""",
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    f'<div class="brand">{escape(BRAND)}</div>',
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-<div class="hero">
-    <h1>GOOD RESUME FINDS GREAT ROLES</h1>
     <p>
-        Understand your experience. Build your skills.
+        Understand your experience. Build your skills.<br>
         Take your next step with confidence.
     </p>
-</div>
-""",
-    unsafe_allow_html=True,
+</section>
+"""
 )
 
-# ---------------------------------------------------------
-# Resume and goals
-# ---------------------------------------------------------
+
+# =========================================================
+# RESUME INPUT
+# =========================================================
 
 left, right = st.columns([1.1, 1], gap="large")
 
@@ -1239,6 +1339,7 @@ with left:
                 key="resume_upload",
             )
             st.caption("Text-based PDF or DOCX · Maximum 10 MB")
+
         else:
             resume_text = st.text_area(
                 "Paste your resume",
@@ -1247,7 +1348,10 @@ with left:
                 key="resume_pasted_text",
             )
 
-    with st.expander("Add projects and courses"):
+    with st.popover(
+    "Add projects and courses",
+    use_container_width=True,
+):
         additional_projects = st.text_area(
             "Completed projects",
             placeholder=(
@@ -1263,9 +1367,14 @@ with left:
             key="additional_courses",
         )
 
+
+# =========================================================
+# GOALS — EACH FIELD CREATED ONCE
+# =========================================================
 with right:
     with st.container(border=True):
         st.subheader("Where do you want to go?")
+        st.caption("These details are optional.")
         st.caption("These details are optional.")
 
         target_role = st.text_input(
@@ -1312,10 +1421,9 @@ with right:
         )
 
 
-# ---------------------------------------------------------
-# Keep results aligned with the analyzed inputs
-# Location and job type can change without a new AI request.
-# ---------------------------------------------------------
+# =========================================================
+# KEEP RESULTS ALIGNED WITH INPUTS
+# =========================================================
 
 file_digest = (
     hashlib.sha256(uploaded_file.getvalue()).hexdigest()
@@ -1332,10 +1440,12 @@ signature_data = {
     "projects": additional_projects,
     "courses": additional_courses,
     "provider": provider,
-    "model": ollama_model if provider == "Ollama" else os.getenv(
-        "GEMINI_MODEL", ""
+    "model": (
+        ollama_model
+        if provider == "Ollama"
+        else os.getenv("GEMINI_MODEL", "")
     ),
-    "review_version": 5,
+    "version": 6,
 }
 
 input_signature = hashlib.sha256(
@@ -1345,6 +1455,7 @@ input_signature = hashlib.sha256(
 if st.session_state.get("review_signature") != input_signature:
     st.session_state.pop("review_result", None)
     st.session_state.pop("review_text", None)
+    st.session_state.pop("extracted_resume_preview", None)
 
     for state_key in list(st.session_state):
         if state_key.startswith("role_"):
@@ -1353,9 +1464,9 @@ if st.session_state.get("review_signature") != input_signature:
     st.session_state["review_signature"] = input_signature
 
 
-# ---------------------------------------------------------
-# Analysis
-# ---------------------------------------------------------
+# =========================================================
+# ANALYSIS
+# =========================================================
 
 with st.expander("Privacy details"):
     if provider == "Gemini":
@@ -1371,8 +1482,7 @@ with st.expander("Privacy details"):
 
     st.caption(
         "Saved profiles are stored separately in Firebase. "
-        "This page does not automatically include your saved profile "
-        "in an AI request."
+        "Your saved profile is not automatically included in an AI request."
     )
 
 has_resume = uploaded_file is not None or bool(resume_text.strip())
@@ -1390,6 +1500,7 @@ preview_clicked = st.button(
 )
 
 if preview_clicked:
+    st.session_state.pop("extracted_resume_preview", None)
     st.session_state["review_text"] = (
         "Sample Candidate\n"
         "Education: Bachelor's in Computer Science\n"
@@ -1401,9 +1512,13 @@ if preview_clicked:
 if analyze_clicked:
     st.session_state.pop("review_result", None)
     st.session_state.pop("review_text", None)
+    st.session_state.pop("extracted_resume_preview", None)
 
     try:
-        if uploaded_file is not None and uploaded_file.size > 10 * 1024 * 1024:
+        if (
+            uploaded_file is not None
+            and uploaded_file.size > 10 * 1024 * 1024
+        ):
             raise ValueError("Please upload a resume smaller than 10 MB.")
 
         with st.spinner("Reading your resume..."):
@@ -1420,7 +1535,6 @@ if analyze_clicked:
             )
 
         st.session_state["review_text"] = text
-
         started = perf_counter()
 
         with st.spinner("Preparing your resume review..."):
@@ -1461,12 +1575,10 @@ if analyze_clicked:
 
         analysis["elapsed_seconds"] = elapsed
         analysis["is_sample"] = False
-
         st.session_state["review_result"] = analysis
 
     except ValueError as error:
         st.error(str(error))
-
 
 result = st.session_state.get("review_result")
 
@@ -1474,9 +1586,9 @@ if result:
     display_results(result, location, job_type)
 
 
-# ---------------------------------------------------------
-# Learning library
-# ---------------------------------------------------------
+# =========================================================
+# LEARNING LIBRARY
+# =========================================================
 
 st.divider()
 
