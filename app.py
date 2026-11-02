@@ -5,6 +5,8 @@ import re
 from html import escape
 from time import perf_counter
 from urllib.parse import urlencode
+import base64
+from pathlib import Path
 
 import streamlit as st
 
@@ -1124,14 +1126,36 @@ st.html(APP_CSS)
 # =========================================================
 # BRAND — RENDERED ONCE
 # =========================================================
+logo_path = Path(__file__).resolve().parent / "assets" / "logo.png"
 
-st.html(
-    f'<div class="app-brand">'
-    f'<span>{escape(BRAND)}</span>'
-    f'<span class="app-brand-icon" aria-hidden="true">💼</span>'
-    f'</div>'
-)
+if logo_path.is_file():
+    logo_base64 = base64.b64encode(
+        logo_path.read_bytes()
+    ).decode("ascii")
 
+    st.html(
+        f"""
+<style>
+.app-brand img {{
+    display: block;
+    width: 250px;
+    max-width: 100%;
+    height: auto;
+}}
+</style>
+
+<div class="app-brand">
+    <img
+        src="data:image/png;base64,{logo_base64}"
+        alt="{escape(BRAND, quote=True)}"
+    >
+</div>
+"""
+    )
+else:
+    st.html(
+        f'<div class="app-brand">{escape(BRAND)}</div>'
+    )
 
 # =========================================================
 # ACCOUNT CONTROLS
@@ -1374,9 +1398,6 @@ with left:
 with right:
     with st.container(border=True):
         st.subheader("Where do you want to go?")
-        st.caption("These details are optional.")
-        st.caption("These details are optional.")
-
         target_role = st.text_input(
             "Target role",
             placeholder="For example: Data Analyst",
